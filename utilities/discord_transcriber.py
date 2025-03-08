@@ -1,4 +1,4 @@
-from strategies.transcription_strategy import (
+from utilities.strategies.transcription_strategy import (
     NonDiarizedSingleStreamStrategy,
     DiarizedSingleStreamStrategy,
     NonDiarizedMultiStreamStrategy,
