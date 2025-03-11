@@ -18,6 +18,13 @@ class TranscriptionStrategy(ABC):
     def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types):
         pass
 
+    def _format_time(self, seconds):
+        td = datetime.timedelta(seconds=seconds)
+        hours, remainder = divmod(td.total_seconds(), 3600)
+        minutes, seconds = divmod(remainder, 60)
+        return f"{int(hours):02d}:{int(minutes):02d}:{seconds:06.3f}"
+
+
 class NonDiarizedSingleStreamStrategy(TranscriptionStrategy):
     """Transcribes single or multi-stream audio as a single speaker."""
     def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types):
@@ -41,11 +48,6 @@ class NonDiarizedSingleStreamStrategy(TranscriptionStrategy):
                     start_str = self._format_time(seg["start"])
                     f.write(f"[{start_str}] {speaker}: {seg['text']}\n")
 
-    def _format_time(self, seconds):
-        td = datetime.timedelta(seconds=seconds)
-        hours, remainder = divmod(td.total_seconds(), 3600)
-        minutes, seconds = divmod(remainder, 60)
-        return f"{int(hours):02d}:{int(minutes):02d}:{seconds:06.3f}"
 
 class DiarizedSingleStreamStrategy(TranscriptionStrategy):
     """Transcribes single-stream audio with speaker diarization."""
@@ -109,11 +111,6 @@ class DiarizedSingleStreamStrategy(TranscriptionStrategy):
                     start_str = self._format_time(seg["start"])
                     f.write(f"[{start_str}] {seg['speaker']}: {seg['text']}\n")
 
-    def _format_time(self, seconds):
-        td = datetime.timedelta(seconds=seconds)
-        hours, remainder = divmod(td.total_seconds(), 3600)
-        minutes, seconds = divmod(remainder, 60)
-        return f"{int(hours):02d}:{int(minutes):02d}:{seconds:06.3f}"
 
 class NonDiarizedMultiStreamStrategy(TranscriptionStrategy):
     """Transcribes multi-stream audio, each stream as a different speaker."""
@@ -139,11 +136,6 @@ class NonDiarizedMultiStreamStrategy(TranscriptionStrategy):
                     start_str = self._format_time(seg["start"])
                     f.write(f"[{start_str}] {speaker}: {seg['text']}\n")
 
-    def _format_time(self, seconds):
-        td = datetime.timedelta(seconds=seconds)
-        hours, remainder = divmod(td.total_seconds(), 3600)
-        minutes, seconds = divmod(remainder, 60)
-        return f"{int(hours):02d}:{int(minutes):02d}:{seconds:06.3f}"
 
 class NonDiarizedAlignedFilesStrategy(TranscriptionStrategy):
     """Transcribes multiple aligned files, each as a separate speaker, into a combined output."""
@@ -172,8 +164,3 @@ class NonDiarizedAlignedFilesStrategy(TranscriptionStrategy):
                     start_str = self._format_time(seg["start"])
                     f.write(f"[{start_str}] {seg['speaker']}: {seg['text']}\n")
 
-    def _format_time(self, seconds):
-        td = datetime.timedelta(seconds=seconds)
-        hours, remainder = divmod(td.total_seconds(), 3600)
-        minutes, seconds = divmod(remainder, 60)
-        return f"{int(hours):02d}:{int(minutes):02d}:{seconds:06.3f}"
