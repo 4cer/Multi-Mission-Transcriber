@@ -57,7 +57,7 @@ class DiarizedSingleStreamStrategy(TranscriptionStrategy):
             clips = self._handle_large_files(input_file, clip_dir)
             all_segments = []
             for clip_path in clips:
-                result = model.transcribe(clip_path, print_progress=True, combined_progress=True)
+                result = model.transcribe(clip_path, tqdm_progress=True)
                 segments = result["segments"]
                 for segment in segments:
                     sample_rate = torchaudio.info(clip_path).sample_rate
