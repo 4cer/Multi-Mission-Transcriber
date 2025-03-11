@@ -36,7 +36,7 @@ class NonDiarizedSingleStreamStrategy(TranscriptionStrategy):
                 json.dump({"segments": [{"start": seg["start"], "end": seg["end"], "text": seg["text"], "speaker": speaker} for seg in segments]}, f, indent=2)
         if 'text' in output_types:
             text_path = os.path.join(output_dir, f"{base_name}.txt")
-            with open(text_path, 'w') as f:
+            with open(text_path, 'w', encoding='utf-8') as f:
                 for seg in segments:
                     start_str = self._format_time(seg["start"])
                     f.write(f"[{start_str}] {speaker}: {seg['text']}\n")
