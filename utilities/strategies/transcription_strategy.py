@@ -24,7 +24,7 @@ class NonDiarizedSingleStreamStrategy(TranscriptionStrategy):
         model = whisperx.load_model("large", device="cuda", compute_type="float16")
         model.options.initial_prompt = initial_prompt
         for input_file in input_files:
-            result = model.transcribe(input_file)
+            result = model.transcribe(input_file, print_progress=True)
             segments = result["segments"]
             self._generate_outputs(input_file, output_dir, output_types, segments, speaker="Speaker")
 
@@ -57,7 +57,7 @@ class DiarizedSingleStreamStrategy(TranscriptionStrategy):
             clips = self._handle_large_files(input_file, clip_dir)
             all_segments = []
             for clip_path in clips:
-                result = model.transcribe(clip_path)
+                result = model.transcribe(clip_path, print_progress=True)
                 segments = result["segments"]
                 for segment in segments:
                     waveform, sample_rate = torchaudio.load(clip_path, frame_offset=int(segment["start"] * sample_rate), num_frames=int((segment["end"] - segment["start"]) * sample_rate))
@@ -119,7 +119,7 @@ class NonDiarizedMultiStreamStrategy(TranscriptionStrategy):
         model.options.initial_prompt = initial_prompt
         for idx, input_file in enumerate(input_files):
             speaker = f"Speaker {idx + 1}"
-            result = model.transcribe(input_file)
+            result = model.transcribe(input_file, print_progress=True)
             segments = result["segments"]
             self._generate_outputs(input_file, output_dir, output_types, segments, speaker)
 
@@ -150,7 +150,7 @@ class NonDiarizedAlignedFilesStrategy(TranscriptionStrategy):
         all_segments = []
         for idx, input_file in enumerate(input_files):
             speaker = f"Speaker {idx + 1}"
-            result = model.transcribe(input_file)
+            result = model.transcribe(input_file, print_progress=True)
             segments = result["segments"]
             for seg in segments:
                 all_segments.append({"start": seg["start"], "end": seg["end"], "text": seg["text"], "speaker": speaker})
