@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import whisperx
 import pyannote.audio
+import torch
 import torchaudio
 import numpy as np
 from scipy.spatial.distance import pdist
@@ -21,8 +22,9 @@ class NonDiarizedSingleStreamStrategy(TranscriptionStrategy):
     """Transcribes single or multi-stream audio as a single speaker."""
     def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types):
         model = whisperx.load_model("large", device="cuda", compute_type="float16")
+        model.options.initial_prompt = initial_prompt
         for input_file in input_files:
-            result = model.transcribe(input_file, prompt=initial_prompt)
+            result = model.transcribe(input_file)
             segments = result["segments"]
             self._generate_outputs(input_file, output_dir, output_types, segments, speaker="Speaker")
 
@@ -49,12 +51,13 @@ class DiarizedSingleStreamStrategy(TranscriptionStrategy):
     """Transcribes single-stream audio with speaker diarization."""
     def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types):
         model = whisperx.load_model("large", device="cuda", compute_type="float16")
+        model.options.initial_prompt = initial_prompt
         embedding_model = pyannote.audio.Inference("pyannote/embedding", device="cuda")
         for input_file in input_files:
             clips = self._handle_large_files(input_file, clip_dir)
             all_segments = []
             for clip_path in clips:
-                result = model.transcribe(clip_path, prompt=initial_prompt)
+                result = model.transcribe(clip_path)
                 segments = result["segments"]
                 for segment in segments:
                     waveform, sample_rate = torchaudio.load(clip_path, frame_offset=int(segment["start"] * sample_rate), num_frames=int((segment["end"] - segment["start"]) * sample_rate))
@@ -113,9 +116,10 @@ class NonDiarizedMultiStreamStrategy(TranscriptionStrategy):
     """Transcribes multi-stream audio, each stream as a different speaker."""
     def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types):
         model = whisperx.load_model("large", device="cuda", compute_type="float16")
+        model.options.initial_prompt = initial_prompt
         for idx, input_file in enumerate(input_files):
             speaker = f"Speaker {idx + 1}"
-            result = model.transcribe(input_file, prompt=initial_prompt)
+            result = model.transcribe(input_file)
             segments = result["segments"]
             self._generate_outputs(input_file, output_dir, output_types, segments, speaker)
 
@@ -142,10 +146,11 @@ class NonDiarizedAlignedFilesStrategy(TranscriptionStrategy):
     """Transcribes multiple aligned files, each as a separate speaker, into a combined output."""
     def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types):
         model = whisperx.load_model("large", device="cuda", compute_type="float16")
+        model.options.initial_prompt = initial_prompt
         all_segments = []
         for idx, input_file in enumerate(input_files):
             speaker = f"Speaker {idx + 1}"
-            result = model.transcribe(input_file, prompt=initial_prompt)
+            result = model.transcribe(input_file)
             segments = result["segments"]
             for seg in segments:
                 all_segments.append({"start": seg["start"], "end": seg["end"], "text": seg["text"], "speaker": speaker})
