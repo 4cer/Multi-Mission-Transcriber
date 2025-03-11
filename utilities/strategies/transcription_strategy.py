@@ -52,15 +52,16 @@ class DiarizedSingleStreamStrategy(TranscriptionStrategy):
     def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types):
         model = whisperx.load_model("large", device="cuda", compute_type="float16")
         model.options.initial_prompt = initial_prompt
-        embedding_model = pyannote.audio.Inference("pyannote/embedding", device="cuda")
+        embedding_model = pyannote.audio.Inference("pyannote/embedding", device=torch.device("cuda"))
         for input_file in input_files:
             clips = self._handle_large_files(input_file, clip_dir)
             all_segments = []
             for clip_path in clips:
-                result = model.transcribe(clip_path, print_progress=True)
+                result = model.transcribe(clip_path, print_progress=True, combined_progress=True)
                 segments = result["segments"]
                 for segment in segments:
-                    waveform, sample_rate = torchaudio.load(clip_path, frame_offset=int(segment["start"] * sample_rate), num_frames=int((segment["end"] - segment["start"]) * sample_rate))
+                    sample_rate = torchaudio.info(clip_path).sample_rate
+                    waveform, _ = torchaudio.load(clip_path, frame_offset=int(segment["start"] * sample_rate), num_frames=int((segment["end"] - segment["start"]) * sample_rate))
                     embedding = embedding_model({"waveform": waveform, "sample_rate": sample_rate})
                     all_segments.append({"start": segment["start"], "end": segment["end"], "text": segment["text"], "embedding": embedding})
             if all_segments:
