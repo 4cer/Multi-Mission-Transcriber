@@ -21,9 +21,16 @@ class TranscriberBuilder:
     def with_strategy(self, strategy_name):
         strategy_map = {
             'non-diarized-single': NonDiarizedSingleStreamStrategy(),
+            'nds': NonDiarizedSingleStreamStrategy(),
+
             'diarized-single': DiarizedSingleStreamStrategy(),
+            'ds': DiarizedSingleStreamStrategy(),
+
             'non-diarized-multi': NonDiarizedMultiStreamStrategy(),
-            'non-diarized-aligned': NonDiarizedAlignedFilesStrategy()
+            'ndm': NonDiarizedMultiStreamStrategy(),
+
+            'non-diarized-aligned': NonDiarizedAlignedFilesStrategy(),
+            'nda': NonDiarizedAlignedFilesStrategy()
         }
         self.strategy = strategy_map.get(strategy_name)
         if not self.strategy:
