@@ -53,6 +53,7 @@ class DiarizedSingleStreamStrategy(TranscriptionStrategy):
         model = whisperx.load_model("large", device="cuda", compute_type="float16")
         model.options.initial_prompt = initial_prompt
         embedding_model = pyannote.audio.Inference("pyannote/embedding", device=torch.device("cuda"))
+        adin = True
         for input_file in input_files:
             clips = self._handle_large_files(input_file, clip_dir)
             all_segments = []
@@ -62,13 +63,14 @@ class DiarizedSingleStreamStrategy(TranscriptionStrategy):
                 for segment in segments:
                     sample_rate = torchaudio.info(clip_path).sample_rate
                     waveform, _ = torchaudio.load(clip_path, frame_offset=int(segment["start"] * sample_rate), num_frames=int((segment["end"] - segment["start"]) * sample_rate))
-                    embedding = embedding_model({"waveform": waveform, "sample_rate": sample_rate})
+                    embedding_tensor = embedding_model({"waveform": waveform, "sample_rate": sample_rate})
+                    embedding = embedding_tensor.data.mean(axis=0)
                     all_segments.append({"start": segment["start"], "end": segment["end"], "text": segment["text"], "embedding": embedding})
             if all_segments:
-                embeddings = np.array([seg["embedding"].numpy() for seg in all_segments])
+                embeddings = np.array([seg["embedding"].data for seg in all_segments])
                 dist_matrix = pdist(embeddings, metric='cosine')
                 linkage_matrix = linkage(dist_matrix, method='average')
-                clusters = fcluster(linkage_matrix, threshold=0.5, criterion='distance')
+                clusters = fcluster(linkage_matrix, t=0.5, criterion='distance')
                 unique_clusters = np.unique(clusters)
                 speaker_map = {cluster: f"Speaker {i+1}" for i, cluster in enumerate(unique_clusters)}
                 for i, segment in enumerate(all_segments):
@@ -98,11 +100,11 @@ class DiarizedSingleStreamStrategy(TranscriptionStrategy):
         base_name = os.path.splitext(os.path.basename(input_file))[0]
         if 'json' in output_types:
             json_path = os.path.join(output_dir, f"{base_name}.json")
-            with open(json_path, 'w') as f:
-                json.dump({"segments": segments}, f, indent=2)
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump({"segments": segments}, f, indent=2, ensure_ascii=False)
         if 'text' in output_types:
             text_path = os.path.join(output_dir, f"{base_name}.txt")
-            with open(text_path, 'w') as f:
+            with open(text_path, 'w', encoding='utf-8') as f:
                 for seg in segments:
                     start_str = self._format_time(seg["start"])
                     f.write(f"[{start_str}] {seg['speaker']}: {seg['text']}\n")
