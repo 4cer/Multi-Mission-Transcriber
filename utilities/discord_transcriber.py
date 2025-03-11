@@ -49,6 +49,7 @@ class TranscriberBuilder:
             self.initial_prompt = PromptBuilder.from_directory(prompt)
         else:
             self.initial_prompt = None
+        print(f"[INITIAL PROMPT SET]\n{self.initial_prompt}\n")
         return self
 
     def with_output_types(self, output_types):
