@@ -84,7 +84,6 @@ class DiarizedSingleStreamStrategy(TranscriptionStrategy):
         model = whisperx.load_model("large", device="cuda", compute_type="float16", language=language)
         model.options.initial_prompt = initial_prompt
         embedding_model = pyannote.audio.Inference("pyannote/embedding", device=torch.device("cuda"))
-        adin = True
         for input_file in input_files:
             clips = self._handle_large_files(input_file, clip_dir)
             all_segments = []
