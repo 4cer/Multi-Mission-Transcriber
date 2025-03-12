@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import pyannote.pipeline
 import whisperx
 import pyannote.audio
 import torch
@@ -106,11 +107,41 @@ class DiarizedMultiClipTest(TranscriptionStrategy):
         step = 1.0
         duration = 3.0
         embedding_model = pyannote.audio.Inference("pyannote/embedding", device=torch.device("cuda"), window="sliding", duration=duration, step=step, batch_size=64)
+
+        diarization_model = pyannote.audio.Pipeline.from_pretrained(
+            "pyannote/speaker-diarization-3.1",
+        )
+        diarization_model.to(torch.device("cuda"))
+
+        for file in input_files:
+            diarization = diarization_model(file)
+
+            for turn, aba, speaker in diarization.itertracks(yield_label=True):
+                print(f"start={turn.start:.1f}s stop={turn.end:.1f}s speaker_{speaker}, {aba}")
+
+        exit()
+
+
+        embedding_list = []
         for file in input_files:
             embeddings = embedding_model(file)
             print(embeddings.data.shape)
             last_i = embeddings.data.shape[0]-1
             print(f"Last window: {last_i*step}, {last_i*step+duration}")
+            embedding_list.append(embeddings.data)
+        
+        concatted = np.concatenate(embedding_list, axis=0)
+        print(concatted.shape)
+
+        dist_matrix = pdist(concatted, metric='cosine')
+        linkage_matrix = linkage(dist_matrix, method='average')
+        clusters = fcluster(linkage_matrix, t=0.6, criterion='distance')
+        unique_clusters = np.unique(clusters)
+        speaker_map = {cluster: f"Speaker {i+1}" for i, cluster in enumerate(unique_clusters)}
+        
+        print('clusters ', clusters.shape, clusters)
+        print('uclusters', unique_clusters.shape, unique_clusters)
+        print('speaker map', len(list(speaker_map.keys())))
 
 
 class DiarizedSingleStreamStrategy(TranscriptionStrategy):
