@@ -13,9 +13,6 @@ import os
 import json
 import datetime, time
 
-a = dict()
-
-a.get('test')
 
 class TranscriptionStrategy(ABC):
     @abstractmethod
@@ -66,6 +63,31 @@ class TranscriptionStrategy(ABC):
                 for seg in segments:
                     f.write(f"{seg['text']}\n")
 
+    def _handle_large_files(self, input_file, clip_dir):
+        if os.path.getsize(input_file) > 1024 * 1024 * 1024:  # 1GB
+            return self._split_audio(input_file, clip_dir)
+        else:
+            clip_path = os.path.join(clip_dir, "original" + os.path.splitext(input_file)[1])
+            shutil.copy(input_file, clip_path)
+            return [clip_path]
+
+    def _split_audio(self, input_file, clip_dir, segment_time=3600):
+        base_name = os.path.splitext(os.path.basename(input_file))[0]
+        clip_subdir = os.path.join(clip_dir, base_name)
+        os.makedirs(clip_subdir, exist_ok=True)
+        output_pattern = os.path.join(clip_subdir, "clip%03d" + os.path.splitext(input_file)[1])
+        cmd = ['ffmpeg', '-i', input_file, '-f', 'segment', '-segment_time', str(segment_time), '-c', 'copy', output_pattern]
+        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return sorted(glob.glob(os.path.join(clip_subdir, "clip*")))
+    
+    def _cleanup_clips(self, clips, clip_dir):
+        for clip in clips:
+            os.path.join(clip_dir, clip)
+            try:
+                os.remove(clip)
+            except Exception as e:
+                print(e)
+
 
 class NonDiarizedSingleStreamStrategy(TranscriptionStrategy):
     """Transcribes single or multi-stream audio as a single speaker."""
@@ -76,6 +98,19 @@ class NonDiarizedSingleStreamStrategy(TranscriptionStrategy):
             result = model.transcribe(input_file, print_progress=True)
             segments = result["segments"]
             self._generate_outputs([input_file], output_dir, output_types, segments)
+
+
+class DiarizedMultiClipTest(TranscriptionStrategy):
+    """Test for diarization sliding window with multiple files"""
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language):
+        step = 1.0
+        duration = 3.0
+        embedding_model = pyannote.audio.Inference("pyannote/embedding", device=torch.device("cuda"), window="sliding", duration=duration, step=step, batch_size=64)
+        for file in input_files:
+            embeddings = embedding_model(file)
+            print(embeddings.data.shape)
+            last_i = embeddings.data.shape[0]-1
+            print(f"Last window: {last_i*step}, {last_i*step+duration}")
 
 
 class DiarizedSingleStreamStrategy(TranscriptionStrategy):
@@ -108,23 +143,6 @@ class DiarizedSingleStreamStrategy(TranscriptionStrategy):
                     del segment["embedding"]
                 sorted_segments = sorted(all_segments, key=lambda x: x["start"])
                 self._generate_outputs([input_file], output_dir, output_types, sorted_segments)
-
-    def _handle_large_files(self, input_file, clip_dir):
-        if os.path.getsize(input_file) > 1024 * 1024 * 1024:  # 1GB
-            return self._split_audio(input_file, clip_dir)
-        else:
-            clip_path = os.path.join(clip_dir, "original" + os.path.splitext(input_file)[1])
-            shutil.copy(input_file, clip_path)
-            return [clip_path]
-
-    def _split_audio(self, input_file, clip_dir, segment_time=3600):
-        base_name = os.path.splitext(os.path.basename(input_file))[0]
-        clip_subdir = os.path.join(clip_dir, base_name)
-        os.makedirs(clip_subdir, exist_ok=True)
-        output_pattern = os.path.join(clip_subdir, "clip%03d" + os.path.splitext(input_file)[1])
-        cmd = ['ffmpeg', '-i', input_file, '-f', 'segment', '-segment_time', str(segment_time), '-c', 'copy', output_pattern]
-        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return sorted(glob.glob(os.path.join(clip_subdir, "clip*")))
 
 
 class NonDiarizedMultiStreamStrategy(TranscriptionStrategy):

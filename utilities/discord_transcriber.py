@@ -2,7 +2,8 @@ from utilities.strategies.transcription_strategy import (
     NonDiarizedSingleStreamStrategy,
     DiarizedSingleStreamStrategy,
     NonDiarizedMultiStreamStrategy,
-    NonDiarizedAlignedFilesStrategy
+    NonDiarizedAlignedFilesStrategy,
+    DiarizedMultiClipTest
 )
 from utilities.prompt_builder import PromptBuilder
 from dotenv import load_dotenv
@@ -31,7 +32,9 @@ class TranscriberBuilder:
             'ndm': NonDiarizedMultiStreamStrategy(),
 
             'non-diarized-aligned': NonDiarizedAlignedFilesStrategy(),
-            'nda': NonDiarizedAlignedFilesStrategy()
+            'nda': NonDiarizedAlignedFilesStrategy(),
+
+            'test': DiarizedMultiClipTest()
         }
         self.strategy = strategy_map.get(strategy_name)
         if not self.strategy:
