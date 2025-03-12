@@ -11,7 +11,7 @@ import glob
 import shutil
 import os
 import json
-import datetime
+import datetime, time
 
 a = dict()
 
@@ -19,7 +19,7 @@ a.get('test')
 
 class TranscriptionStrategy(ABC):
     @abstractmethod
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types):
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language):
         pass
 
     def _format_time(self, seconds):
@@ -33,8 +33,9 @@ class TranscriptionStrategy(ABC):
     def _generate_outputs(self, input_files: list[str], output_dir: str, output_types: list[str], segments: list[dict]):
         """DiarizedSingleStreamStrategy"""
         base_name = os.path.splitext(os.path.basename("_".join(input_files)))[0]
+        now = int(time.time())
         if 'json' in output_types:
-            json_path = os.path.join(output_dir, f"{base_name}.json")
+            json_path = os.path.join(output_dir, f"{now}_{base_name}.json")
             with open(json_path, 'w', encoding='utf-8') as f:
                 json.dump(
                     {"segments": [{
@@ -46,21 +47,21 @@ class TranscriptionStrategy(ABC):
                     },
                     f, indent=2, ensure_ascii=False)
         if 'text' in output_types:
-            text_path = os.path.join(output_dir, f"{base_name}.txt")
+            text_path = os.path.join(output_dir, f"{now}_{base_name}.txt")
             with open(text_path, 'w', encoding='utf-8') as f:
                 for seg in segments:
                     start_str = self._format_time(seg["start"])
                     end_str = self._format_time(seg.get("end",None))
                     f.write(f"[{start_str} / {end_str}] ({seg.get('speaker', 'N/A')}):\n{seg['text'].strip()}\n\n")
         if 'dense' in output_types:
-            text_dense_path = os.path.join(output_dir, f"{base_name}.dense.txt")
+            text_dense_path = os.path.join(output_dir, f"{now}_{base_name}.dense.txt")
             with open(text_dense_path, 'w', encoding='utf-8') as f:
                 for seg in segments:
                     start_str = self._format_time(seg["start"])
                     end_str = self._format_time(seg.get("end",None))
                     f.write(f"[{start_str} / {end_str}] ({seg.get('speaker', 'N/A')}): {seg['text'].strip()}\n")
         if 'raw' in output_types:
-            text_raw_path = os.path.join(output_dir, f"{base_name}.raw.txt")
+            text_raw_path = os.path.join(output_dir, f"{now}_{base_name}.raw.txt")
             with open(text_raw_path, 'w', encoding='utf-8') as f:
                 for seg in segments:
                     f.write(f"{seg['text']}\n")
@@ -68,8 +69,8 @@ class TranscriptionStrategy(ABC):
 
 class NonDiarizedSingleStreamStrategy(TranscriptionStrategy):
     """Transcribes single or multi-stream audio as a single speaker."""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types):
-        model = whisperx.load_model("large", device="cuda", compute_type="float16")
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language):
+        model = whisperx.load_model("large", device="cuda", compute_type="float16", language=language)
         model.options.initial_prompt = initial_prompt
         for input_file in input_files:
             result = model.transcribe(input_file, print_progress=True)
@@ -79,8 +80,8 @@ class NonDiarizedSingleStreamStrategy(TranscriptionStrategy):
 
 class DiarizedSingleStreamStrategy(TranscriptionStrategy):
     """Transcribes single-stream audio with speaker diarization."""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types):
-        model = whisperx.load_model("large", device="cuda", compute_type="float16")
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language):
+        model = whisperx.load_model("large", device="cuda", compute_type="float16", language=language)
         model.options.initial_prompt = initial_prompt
         embedding_model = pyannote.audio.Inference("pyannote/embedding", device=torch.device("cuda"))
         adin = True
@@ -129,8 +130,8 @@ class DiarizedSingleStreamStrategy(TranscriptionStrategy):
 
 class NonDiarizedMultiStreamStrategy(TranscriptionStrategy):
     """Transcribes multi-stream audio, each stream as a different speaker."""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types):
-        model = whisperx.load_model("large", device="cuda", compute_type="float16")
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language):
+        model = whisperx.load_model("large", device="cuda", compute_type="float16", language=language)
         model.options.initial_prompt = initial_prompt
         for idx, input_file in enumerate(input_files):
             speaker = f"Speaker {idx + 1}"
@@ -141,8 +142,8 @@ class NonDiarizedMultiStreamStrategy(TranscriptionStrategy):
 
 class NonDiarizedAlignedFilesStrategy(TranscriptionStrategy):
     """Transcribes multiple aligned files, each as a separate speaker, into a combined output."""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types):
-        model = whisperx.load_model("large", device="cuda", compute_type="float16")
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language):
+        model = whisperx.load_model("large", device="cuda", compute_type="float16", language=language)
         model.options.initial_prompt = initial_prompt
         all_segments = []
         for idx, input_file in enumerate(input_files):

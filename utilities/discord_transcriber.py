@@ -17,6 +17,7 @@ class TranscriberBuilder:
         self.clip_dir = None
         self.initial_prompt = None
         self.output_types = []
+        self.language = None
 
     def with_strategy(self, strategy_name):
         strategy_map = {
@@ -62,6 +63,10 @@ class TranscriberBuilder:
     def with_output_types(self, output_types):
         self.output_types = output_types
         return self
+    
+    def with_language(self, language: str):
+        self.language = language
+        return self
 
     def build(self):
         if not all([self.strategy, self.input_files, self.output_dir, self.clip_dir, self.output_types]):
@@ -72,18 +77,20 @@ class TranscriberBuilder:
             output_dir=self.output_dir,
             clip_dir=self.clip_dir,
             initial_prompt=self.initial_prompt,
-            output_types=self.output_types
+            output_types=self.output_types,
+            language=self.language
         )
 
 class DiscordTranscriber:
     """Processes audio files using the selected strategy."""
-    def __init__(self, strategy, input_files, output_dir, clip_dir, initial_prompt, output_types):
+    def __init__(self, strategy, input_files, output_dir, clip_dir, initial_prompt, output_types, language):
         self.strategy = strategy
         self.input_files = input_files
         self.output_dir = output_dir
         self.clip_dir = clip_dir
         self.initial_prompt = initial_prompt
         self.output_types = output_types
+        self.language = language
         self._load_env()
 
     def _load_env(self):
@@ -94,4 +101,4 @@ class DiscordTranscriber:
         os.environ["HF_TOKEN"] = hf_token
 
     def process(self):
-        self.strategy.process(self.input_files, self.output_dir, self.clip_dir, self.initial_prompt, self.output_types)
+        self.strategy.process(self.input_files, self.output_dir, self.clip_dir, self.initial_prompt, self.output_types, self.language)
