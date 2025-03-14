@@ -13,6 +13,8 @@ import shutil
 import os
 import json
 import datetime, time
+from silero_vad import load_silero_vad, read_audio, get_speech_timestamps
+import math
 
 
 class TranscriptionStrategy(ABC):
@@ -107,41 +109,127 @@ class DiarizedMultiClipTest(TranscriptionStrategy):
         step = 1.0
         duration = 3.0
         embedding_model = pyannote.audio.Inference("pyannote/embedding", device=torch.device("cuda"), window="sliding", duration=duration, step=step, batch_size=64)
-
-        diarization_model = pyannote.audio.Pipeline.from_pretrained(
-            "pyannote/speaker-diarization-3.1",
-        )
-        diarization_model.to(torch.device("cuda"))
-
-        for file in input_files:
-            diarization = diarization_model(file)
-
-            for turn, aba, speaker in diarization.itertracks(yield_label=True):
-                print(f"start={turn.start:.1f}s stop={turn.end:.1f}s speaker_{speaker}, {aba}")
-
-        exit()
-
+        vad_model = load_silero_vad()
 
         embedding_list = []
+        file_limits = []
+        nowlimit = 0
         for file in input_files:
+            print("[Running VAD]", file)
+            wav = read_audio(file)
+            speech_timestamps = get_speech_timestamps(
+                wav,
+                vad_model,
+                return_seconds=True,
+            )
+            print("[Extracting embeddings]", file)
             embeddings = embedding_model(file)
-            print(embeddings.data.shape)
-            last_i = embeddings.data.shape[0]-1
-            print(f"Last window: {last_i*step}, {last_i*step+duration}")
+            print("[Separating silence embeddings]", file)
+            silence = []
+            for st in speech_timestamps:
+                # start_i = math.ceil(st.get("start") / step)
+                # end_i = math.floor((st.get("end") - duration) / step)
+                silence.extend(range(*self.duration_timestamps_to_indices(st.get("start"), st.get("end"), step, duration)))
+            embeddings.data[silence] = 9999.0
             embedding_list.append(embeddings.data)
+            file_limits.append((nowlimit, file))
+            nowlimit += embeddings.data.shape[0]
         
         concatted = np.concatenate(embedding_list, axis=0)
+
         print(concatted.shape)
 
         dist_matrix = pdist(concatted, metric='cosine')
+        print("DIST MATRIX", dist_matrix.shape)
+
         linkage_matrix = linkage(dist_matrix, method='average')
-        clusters = fcluster(linkage_matrix, t=0.6, criterion='distance')
-        unique_clusters = np.unique(clusters)
-        speaker_map = {cluster: f"Speaker {i+1}" for i, cluster in enumerate(unique_clusters)}
+        print("LINKAGE MATRIX", linkage_matrix.shape)
+
+        # clusters = fcluster(linkage_matrix, t=0.9, criterion='distance')
+        clusters = fcluster(linkage_matrix, t=9, criterion='maxclust')
+        print("FCLUSTER", clusters.shape)
+
+        identites = np.unique(clusters)
+        print(identites)
+
+        longest_blocks = []
+        for idn in identites:
+            si, ei = self.largest_consecutive_block_N(clusters, idn)
+            start_t, end_t = self.duration_indices_to_timestamps(si,ei,step,duration)
+            start_file = self.which_file(file_limits, si); end_file = self.which_file(file_limits, ei)
+            print(f"{idn}\n{si:<13} - {ei:<13}\n{start_t} - {end_t}\n{start_file}\n{end_file}")
+            # TODO Handle split between two files
+            longest_blocks.append({'identity': idn ,'start_i': si, 'end_i': ei, 'file': start_file})
         
-        print('clusters ', clusters.shape, clusters)
-        print('uclusters', unique_clusters.shape, unique_clusters)
-        print('speaker map', len(list(speaker_map.keys())))
+        longest_blocks.sort(key=lambda a: a.get('file'))
+
+        file_now = None
+        wav = None
+        sample_rate = None
+        for lb in longest_blocks:
+            if file_now != lb.get('file') or file_now == None:
+                file_now = lb.get('file')
+                sample_rate = torchaudio.info(file_now).sample_rate
+                wav = read_audio(file_now, sample_rate)
+            start_t = lb.get('start_i')*sample_rate
+            end_t = lb.get('end_i')*sample_rate
+            torchaudio.io.play_audio(wav[start_t:end_t], sample_rate)
+            input()
+
+    @staticmethod
+    def which_file(file_limits: list[tuple[int,str]], index: int):
+        for lim in file_limits:
+            if index > lim[0]:
+                return lim[1]
+
+    @staticmethod
+    def duration_timestamps_to_indices(start_time_s: float, end_time_s: float, step: float, duration: float) -> int | int:
+        start_i = math.ceil(start_time_s / step)
+        end_i = math.floor((end_time_s - duration) / step)
+        return start_i, end_i
+    
+    @staticmethod
+    def duration_indices_to_timestamps(start_index: int, end_index: int, step: float, duration: float) -> float | float:
+        start_time_s = float(start_index * step)
+        end_time_s = float(end_index * step + duration)
+        return start_time_s, end_time_s
+    
+    @staticmethod
+    def largest_consecutive_block_N(arr: np.ndarray, val: int) -> int | int:
+        # Find all indices where the array equals the target value
+        indices = np.where(arr == val)[0]
+        
+        # Handle case where the value is not present
+        if len(indices) == 0:
+            return (-1, -1)
+        
+        # Handle case where there's only one occurrence
+        if len(indices) == 1:
+            return (indices[0], indices[0])
+        
+        # Compute differences between consecutive indices to find breaks
+        diffs = np.diff(indices)
+        # Determine where the consecutive sequence breaks (difference > 1)
+        split_positions = np.where(diffs != 1)[0] + 1
+        # Split the indices into groups of consecutive sequences
+        groups = np.split(indices, split_positions)
+        
+        max_start = indices[0]
+        max_end = indices[0]
+        max_length = 1
+        
+        for group in groups:
+            if group.size == 0:
+                continue
+            start = group[0]
+            end = group[-1]
+            current_length = end - start + 1
+            if current_length > max_length:
+                max_length = current_length
+                max_start = start
+                max_end = end
+        
+        return max_start, max_end
 
 
 class DiarizedSingleStreamStrategy(TranscriptionStrategy):
