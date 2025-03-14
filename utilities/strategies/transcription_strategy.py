@@ -16,6 +16,9 @@ import datetime, time
 from silero_vad import load_silero_vad, read_audio, get_speech_timestamps
 import math
 
+import librosa
+import sounddevice as sd
+
 
 class TranscriptionStrategy(ABC):
     @abstractmethod
@@ -159,7 +162,7 @@ class DiarizedMultiClipTest(TranscriptionStrategy):
             start_file = self.which_file(file_limits, si); end_file = self.which_file(file_limits, ei)
             print(f"{idn}\n{si:<13} - {ei:<13}\n{start_t} - {end_t}\n{start_file}\n{end_file}")
             # TODO Handle split between two files
-            longest_blocks.append({'identity': idn ,'start_i': si, 'end_i': ei, 'file': start_file})
+            longest_blocks.append({'identity': idn ,'start_i': si, 'end_i': ei, 'start_t': start_t, 'end_t': end_t, 'file': start_file})
         
         longest_blocks.sort(key=lambda a: a.get('file'))
 
@@ -170,11 +173,18 @@ class DiarizedMultiClipTest(TranscriptionStrategy):
             if file_now != lb.get('file') or file_now == None:
                 file_now = lb.get('file')
                 sample_rate = torchaudio.info(file_now).sample_rate
-                wav = read_audio(file_now, sample_rate)
-            start_t = lb.get('start_i')*sample_rate
-            end_t = lb.get('end_i')*sample_rate
-            torchaudio.io.play_audio(wav[start_t:end_t], sample_rate)
-            input()
+            start_t = lb.get('start_t'); end_t = lb.get('end_t')
+            print("Identity", lb.get('identity'))
+            self.play_file_fragment(file_now, start_t, end_t)
+
+    @staticmethod
+    def play_file_fragment(file_path, start_t, end_t):
+        audio_fragment, sampling_rate = librosa.load(
+            file_path, offset=start_t, duration=end_t - start_t
+        )
+        sd.play(audio_fragment, sampling_rate)
+        sd.wait()  # Wait until playback finishes
+        input("Press Enter to continue...")  # Wait for user input
 
     @staticmethod
     def which_file(file_limits: list[tuple[int,str]], index: int):
