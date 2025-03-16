@@ -22,7 +22,7 @@ import sounddevice as sd
 
 class TranscriptionStrategy(ABC):
     @abstractmethod
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language):
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count):
         pass
 
     def _format_time(self, seconds):
@@ -97,7 +97,7 @@ class TranscriptionStrategy(ABC):
 
 class NonDiarizedSingleStreamStrategy(TranscriptionStrategy):
     """Transcribes single or multi-stream audio as a single speaker."""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language):
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count):
         model = whisperx.load_model("large", device="cuda", compute_type="float16", language=language)
         model.options.initial_prompt = initial_prompt
         for input_file in input_files:
@@ -108,7 +108,7 @@ class NonDiarizedSingleStreamStrategy(TranscriptionStrategy):
 
 class DiarizedMultiClipTest(TranscriptionStrategy):
     """Test for diarization sliding window with multiple files"""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language):
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count):
         step = 1.0
         duration = 3.0
         embedding_model = pyannote.audio.Inference("pyannote/embedding", device=torch.device("cuda"), window="sliding", duration=duration, step=step, batch_size=64)
@@ -244,7 +244,7 @@ class DiarizedMultiClipTest(TranscriptionStrategy):
 
 class DiarizedSingleStreamStrategy(TranscriptionStrategy):
     """Transcribes single-stream audio with speaker diarization."""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language):
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count):
         model = whisperx.load_model("large", device="cuda", compute_type="float16", language=language)
         model.options.initial_prompt = initial_prompt
         embedding_model = pyannote.audio.Inference("pyannote/embedding", device=torch.device("cuda"))
@@ -276,7 +276,7 @@ class DiarizedSingleStreamStrategy(TranscriptionStrategy):
 
 class NonDiarizedMultiStreamStrategy(TranscriptionStrategy):
     """Transcribes multi-stream audio, each stream as a different speaker."""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language):
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count):
         model = whisperx.load_model("large", device="cuda", compute_type="float16", language=language)
         model.options.initial_prompt = initial_prompt
         for idx, input_file in enumerate(input_files):
@@ -288,7 +288,7 @@ class NonDiarizedMultiStreamStrategy(TranscriptionStrategy):
 
 class NonDiarizedAlignedFilesStrategy(TranscriptionStrategy):
     """Transcribes multiple aligned files, each as a separate speaker, into a combined output."""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language):
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count):
         model = whisperx.load_model("large", device="cuda", compute_type="float16", language=language)
         model.options.initial_prompt = initial_prompt
         all_segments = []

@@ -16,11 +16,18 @@ if __name__ == "__main__":
     output_types = ['json', 'text', 'dense', 'raw']
     parser.add_argument('-f', '--output-types', nargs='+', choices=output_types, required=True, help=f'Output types ({", ".join(output_types)} or any combination)')
     parser.add_argument('-l', '--language', choices=[*LANGUAGES.keys(), *LANGUAGES.values()], metavar="{pl, en, polish, english, ...}", help="Language presumed for the entire recording.")
+    parser.add_argument('-m', '--speakers-min', type=int, help="The expected maximum of speaker identities. The number excludes non-speaker noise/silence")
+    parser.add_argument('-x', '--speakers-max', type=int, help="The expected minimum of speaker identities. The number excludes non-speaker noise/silence")
+    parser.add_argument('-e', '--speaker-count', type=int, help="The expected exact count of speakers, mutually exclusive with -m -x")
     args = parser.parse_args()
 
     # Enforce XOR for prompt-type and prompt
     if (args.prompt_type and not args.prompt) or (args.prompt and not args.prompt_type):
         parser.error('--prompt-type and --prompt must be provided together')
+
+    # Enforce -e mutually exclusive with -m -x
+    if args.speaker_count and ((args.speakers_min and args.speakers_max) or args.speakers_min or args.speakers_max):
+        parser.error('Use either `--e SPEAKER-COUNT` xor one or both of: `-m SPEAKER-MIN` `-x SPEAKER-MAP`')
 
     # Ensure output and clip directories exist
     os.makedirs(args.output_dir, exist_ok=True)
@@ -36,6 +43,7 @@ if __name__ == "__main__":
         .with_initial_prompt(args.prompt_type, args.prompt)
         .with_output_types(args.output_types)
         .with_language(args.language)
+        .with_speaker_count(args.speakers_min, args.speakers_max, args.speaker_count)
         .build()
     )
 

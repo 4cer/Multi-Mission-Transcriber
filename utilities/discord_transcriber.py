@@ -70,6 +70,12 @@ class TranscriberBuilder:
     def with_language(self, language: str):
         self.language = language
         return self
+    
+    def with_speaker_count(self, min=None, max=None, exact=None):
+        self.speakers_min = min
+        self.speakers_max = max
+        self.speaker_count = exact
+        return self
 
     def build(self):
         if not all([self.strategy, self.input_files, self.output_dir, self.clip_dir, self.output_types]):
@@ -81,12 +87,15 @@ class TranscriberBuilder:
             clip_dir=self.clip_dir,
             initial_prompt=self.initial_prompt,
             output_types=self.output_types,
-            language=self.language
+            language=self.language,
+            speakers_min=self.speakers_min,
+            speakers_max=self.speakers_max,
+            speaker_count=self.speaker_count
         )
 
 class DiscordTranscriber:
     """Processes audio files using the selected strategy."""
-    def __init__(self, strategy, input_files, output_dir, clip_dir, initial_prompt, output_types, language):
+    def __init__(self, strategy, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count):
         self.strategy = strategy
         self.input_files = input_files
         self.output_dir = output_dir
@@ -94,6 +103,9 @@ class DiscordTranscriber:
         self.initial_prompt = initial_prompt
         self.output_types = output_types
         self.language = language
+        self.speakers_min = speakers_min
+        self.speakers_max = speakers_max
+        self.speaker_count = speaker_count
         self._load_env()
 
     def _load_env(self):
@@ -104,4 +116,4 @@ class DiscordTranscriber:
         os.environ["HF_TOKEN"] = hf_token
 
     def process(self):
-        self.strategy.process(self.input_files, self.output_dir, self.clip_dir, self.initial_prompt, self.output_types, self.language)
+        self.strategy.process(self.input_files, self.output_dir, self.clip_dir, self.initial_prompt, self.output_types, self.language, self.speakers_min, self.speakers_max, self.speaker_count)
