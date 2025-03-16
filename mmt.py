@@ -27,7 +27,7 @@ if __name__ == "__main__":
 
     # Enforce -e mutually exclusive with -m -x
     if args.speaker_count and ((args.speakers_min and args.speakers_max) or args.speakers_min or args.speakers_max):
-        parser.error('Use either `--e SPEAKER-COUNT` xor one or both of: `-m SPEAKER-MIN` `-x SPEAKER-MAP`')
+        parser.error('Use either `--e SPEAKER-COUNT` xor one or both of: `-m SPEAKERS-MIN` `-x SPEAKERS-MAX`')
 
     # Ensure output and clip directories exist
     os.makedirs(args.output_dir, exist_ok=True)
