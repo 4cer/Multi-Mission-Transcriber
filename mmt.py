@@ -8,8 +8,8 @@ from whisper.tokenizer import LANGUAGES
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Diarize and transcribe Discord conversation recordings", epilog="Further help can be found at https://github.com/4cer/SessionTranscriber")
     parser.add_argument('-i', '--input', action='append', required=True, help='Input audio file(s)')
-    parser.add_argument('-o', '--output-dir', default="output", help='Output directory for final results')
-    parser.add_argument('-c', '--clip-dir', default="clips", help='Intermediate clip directory for split files')
+    parser.add_argument('-o', '--output-directory', default="output", help='Output directory for final results')
+    parser.add_argument('-c', '--clip-directory', default="clips", help='Intermediate clip directory for split files')
     parser.add_argument('-s', '--strategy', choices=['non-diarized-single', 'diarized-single', 'non-diarized-multi', 'non-diarized-aligned', 'nds', 'ds', 'ndm', 'nda', 'test'], required=True, help='Transcription strategy')
     parser.add_argument('-t', '--prompt-type', choices=['string', 'directory'], help='Type of initial prompt (string or directory)')
     parser.add_argument('-p', '--prompt', help='Initial prompt string or directory path')
