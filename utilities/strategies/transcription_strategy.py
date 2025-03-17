@@ -109,6 +109,21 @@ class NonDiarizedSingleStreamStrategy(TranscriptionStrategy):
 class DiarizedMultiClipTest(TranscriptionStrategy):
     """Test for diarization sliding window with multiple files"""
     def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count):
+        pipeline = pyannote.audio.Pipeline.from_pretrained(
+            "pyannote/speaker-diarization-3.1"
+        ).to(torch.device('cuda'))
+
+        diarizations = []
+        embeddings = []
+        for file in input_files:
+            diarization, embedding = pipeline(file, return_embeddings=True)
+            diarizations.append(diarization)
+            embeddings.append(embedding)
+
+        # TODO if more than 1 file, do embedding matching
+        
+
+    def process2(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count):
         step = 1.0
         duration = 3.0
         embedding_model = pyannote.audio.Inference("pyannote/embedding", device=torch.device("cuda"), window="sliding", duration=duration, step=step, batch_size=64)
