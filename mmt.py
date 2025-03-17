@@ -30,16 +30,16 @@ if __name__ == "__main__":
         parser.error('Use either `--e SPEAKER-COUNT` xor one or both of: `-m SPEAKERS-MIN` `-x SPEAKERS-MAX`')
 
     # Ensure output and clip directories exist
-    os.makedirs(args.output_dir, exist_ok=True)
-    os.makedirs(args.clip_dir, exist_ok=True)
+    os.makedirs(args.output_directory, exist_ok=True)
+    os.makedirs(args.clip_directory, exist_ok=True)
 
     # Build the transcriber
     builder = TranscriberBuilder()
     transcriber = (builder
         .with_strategy(args.strategy)
         .with_input_files(args.input)
-        .with_output_dir(args.output_dir)
-        .with_clip_dir(args.clip_dir)
+        .with_output_dir(args.output_directory)
+        .with_clip_dir(args.clip_directory)
         .with_initial_prompt(args.prompt_type, args.prompt)
         .with_output_types(args.output_types)
         .with_language(args.language)
