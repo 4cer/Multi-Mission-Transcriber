@@ -179,3 +179,8 @@ cython_debug/
 /prompt/*
 /output/*
 temp_converted.wav
+
+tests.py
+transcribe.py
+tf_tests.py
+tf_transcribe.py
