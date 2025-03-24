@@ -43,5 +43,5 @@ class TestDiarizedSingleFile(unittest.TestCase):
         del self.builder
         return super().tearDown()
     
-    if __name__ == "__main__":
-        unittest.main()
+if __name__ == "__main__":
+    unittest.main()
