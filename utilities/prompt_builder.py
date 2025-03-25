@@ -8,7 +8,7 @@ class PromptBuilder:
         return prompt_str
 
     @staticmethod
-    def from_dict(prompt_dict):
+    def from_dict(prompt_dict) -> str:
         """Builds prompt from a dictionary of lists."""
         parts = []
         if 'prefix' in prompt_dict:
@@ -21,7 +21,7 @@ class PromptBuilder:
         return ' '.join(parts)
 
     @staticmethod
-    def from_directory(prompt_dir):
+    def from_directory(prompt_dir) -> str:
         """Builds prompt from a directory with prefix, suffix, and .list files."""
         prompt_parts = []
         prefix_path = os.path.join(prompt_dir, 'prefix')
