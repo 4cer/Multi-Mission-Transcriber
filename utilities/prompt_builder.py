@@ -34,7 +34,7 @@ class PromptBuilder:
             with open(list_file, 'r', encoding='utf8') as f:
                 items = [line.strip() for line in f if line.strip()]
                 if items:
-                    prompt_parts.append(f"{category}:{','.join(items)}")
+                    prompt_parts.append(f"{category}:{','.join(items)}.")
         
         suffix_path = os.path.join(prompt_dir, 'suffix')
         if os.path.exists(suffix_path):
