@@ -296,7 +296,7 @@ class NonDiarizedMultiStreamStrategy(TranscriptionStrategy):
         model.options.initial_prompt = initial_prompt
         for idx, input_file in enumerate(input_files):
             speaker = f"Speaker {idx + 1}"
-            result = model.transcribe(input_file, print_progress=True)
+            result = model.transcribe(input_file, tqdm_progress=True)
             segments = result["segments"]
             self._generate_outputs(input_file, output_dir, output_types, segments, speaker)
 
@@ -308,8 +308,9 @@ class NonDiarizedAlignedFilesStrategy(TranscriptionStrategy):
         model.options.initial_prompt = initial_prompt
         all_segments = []
         for idx, input_file in enumerate(input_files):
-            speaker = f"Speaker {idx + 1}"
-            result = model.transcribe(input_file, print_progress=True)
+            speaker_candidate_name = os.path.basename(input_file).split('.')[0]
+            speaker = f"Speaker {idx + 1} ({speaker_candidate_name})"
+            result = model.transcribe(input_file, tqdm_progress=True)
             segments = result["segments"]
             for seg in segments:
                 all_segments.append({"start": seg["start"], "end": seg["end"], "text": seg["text"], "speaker": speaker})
