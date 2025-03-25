@@ -12,139 +12,63 @@ import glob
 import shutil
 import os
 import json
-import datetime, time
+import time
 from silero_vad import load_silero_vad, read_audio, get_speech_timestamps
 import math
 
 import librosa
 import sounddevice as sd
 
-from __future__ import annotations
-from types import MappingProxyType
-
-
-class OutputFormatStrategy(ABC):
-    @abstractmethod
-    def output(self, input_files: list[str], output_dir: str, segments: list[dict], output_title: str = None) -> None:
-        ...
-
-    @staticmethod
-    def _format_time( seconds) -> str:
-        """Transform {seconds from recording start} into a HH:MM:SS:ssss format."""
-        if seconds == None:
-            return "--:--:--:---"
-        td = datetime.timedelta(seconds=seconds)
-        hours, remainder = divmod(td.total_seconds(), 3600)
-        minutes, seconds = divmod(remainder, 60)
-        return f"{int(hours):02d}:{int(minutes):02d}:{seconds:06.3f}"
-    
-
-class OutputJson(OutputFormatStrategy):
-    def output(self, input_files: list[str], output_dir: str, segments: list[dict], output_title: str = None) -> None:
-        base_name = output_title if output_title else os.path.splitext(os.path.basename("_".join(input_files)))[0]
-        now = int(time.time())
-        json_path = os.path.join(output_dir, f"{now}_{base_name}.json")
-        with open(json_path, 'w', encoding='utf-8') as f:
-            json.dump(
-                {"segments": [{
-                    "start": seg.get("start", None),
-                    "end": seg.get("end", None),
-                    "speaker": seg.get("speaker", "N/A"),
-                    "text": seg.get("text", "").strip()}
-                    for seg in segments]
-                },
-                f, indent=2, ensure_ascii=False)
-    
-
-class OutputText(OutputFormatStrategy):
-    def output(self, input_files: list[str], output_dir: str, segments: list[dict], output_title: str = None) -> None:
-        base_name = output_title if output_title else os.path.splitext(os.path.basename("_".join(input_files)))[0]
-        now = int(time.time())
-        text_path = os.path.join(output_dir, f"{now}_{base_name}.txt")
-        with open(text_path, 'w', encoding='utf-8') as f:
-            for seg in segments:
-                start_str = self._format_time(seg["start"])
-                end_str = self._format_time(seg.get("end",None))
-                f.write(f"[{start_str} / {end_str}] ({seg.get('speaker', 'N/A')}):\n{seg['text'].strip()}\n\n")
-    
-
-class OutputDense(OutputFormatStrategy):
-    def output(self, input_files: list[str], output_dir: str, segments: list[dict], output_title: str = None) -> None:
-        base_name = output_title if output_title else os.path.splitext(os.path.basename("_".join(input_files)))[0]
-        now = int(time.time())
-        text_dense_path = os.path.join(output_dir, f"{now}_{base_name}.dense.txt")
-        with open(text_dense_path, 'w', encoding='utf-8') as f:
-            for seg in segments:
-                start_str = self._format_time(seg["start"])
-                end_str = self._format_time(seg.get("end",None))
-                f.write(f"[{start_str} / {end_str}] ({seg.get('speaker', 'N/A')}): {seg['text'].strip()}\n")
-    
-
-class OutputRaw(OutputFormatStrategy):
-    def output(self, input_files: list[str], output_dir: str, segments: list[dict], output_title: str = None) -> None:
-        base_name = output_title if output_title else os.path.splitext(os.path.basename("_".join(input_files)))[0]
-        now = int(time.time())
-        text_raw_path = os.path.join(output_dir, f"{now}_{base_name}.raw.txt")
-        with open(text_raw_path, 'w', encoding='utf-8') as f:
-            for seg in segments:
-                f.write(f"{seg['text'].strip()}\n")
-    
-
-class OutputFormatStrategyFactory():
-    _strategy_mapping = MappingProxyType(
-        {
-            'json': OutputJson(),
-            'text': OutputText(),
-            'dense': OutputDense(),
-            'raw': OutputRaw()
-        }
-    )
-
-    @staticmethod
-    def get_strategy(output_type: str) -> OutputFormatStrategy:
-        return OutputFormatStrategy._strategy_mapping[output_type]
+from utilities.strategies.output_strategy import OutputFormatStrategyFactory as OFSF
 
 
 class TranscriptionStrategy(ABC):
     @abstractmethod
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count) -> None:
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count, output_base_name) -> None:
         pass
 
-    def _generate_outputs(self, input_files: list[str], output_dir: str, output_types: list[str], segments: list[dict]) -> None:
+    def _generate_outputs(self, input_files: list[str], output_dir: str, output_types: list[str], segments: list[dict], output_base_name: str = None) -> None:
         """Write labeled segments with text, speaker, timestamps to selected file format(s)"""
-        base_name = os.path.splitext(os.path.basename("_".join(input_files)))[0]
         now = int(time.time())
-        if 'json' in output_types:
-            json_path = os.path.join(output_dir, f"{now}_{base_name}.json")
-            with open(json_path, 'w', encoding='utf-8') as f:
-                json.dump(
-                    {"segments": [{
-                        "start": seg.get("start", None),
-                        "end": seg.get("end", None),
-                        "speaker": seg.get("speaker", "N/A"),
-                        "text": seg.get("text", "").strip()}
-                        for seg in segments]
-                    },
-                    f, indent=2, ensure_ascii=False)
-        if 'text' in output_types:
-            text_path = os.path.join(output_dir, f"{now}_{base_name}.txt")
-            with open(text_path, 'w', encoding='utf-8') as f:
-                for seg in segments:
-                    start_str = self._format_time(seg["start"])
-                    end_str = self._format_time(seg.get("end",None))
-                    f.write(f"[{start_str} / {end_str}] ({seg.get('speaker', 'N/A')}):\n{seg['text'].strip()}\n\n")
-        if 'dense' in output_types:
-            text_dense_path = os.path.join(output_dir, f"{now}_{base_name}.dense.txt")
-            with open(text_dense_path, 'w', encoding='utf-8') as f:
-                for seg in segments:
-                    start_str = self._format_time(seg["start"])
-                    end_str = self._format_time(seg.get("end",None))
-                    f.write(f"[{start_str} / {end_str}] ({seg.get('speaker', 'N/A')}): {seg['text'].strip()}\n")
-        if 'raw' in output_types:
-            text_raw_path = os.path.join(output_dir, f"{now}_{base_name}.raw.txt")
-            with open(text_raw_path, 'w', encoding='utf-8') as f:
-                for seg in segments:
-                    f.write(f"{seg['text'].strip()}\n")
+        base_name = output_base_name if output_base_name else os.path.splitext(os.path.basename("_".join(input_files)))[0]
+
+        for tp in output_types:
+            strategy = OFSF.get_strategy(tp)
+            strategy.output(segments, output_dir, now, base_name)
+
+        # base_name = os.path.splitext(os.path.basename("_".join(input_files)))[0]
+        # now = int(time.time())
+        # if 'json' in output_types:
+        #     json_path = os.path.join(output_dir, f"{now}_{base_name}.json")
+        #     with open(json_path, 'w', encoding='utf-8') as f:
+        #         json.dump(
+        #             {"segments": [{
+        #                 "start": seg.get("start", None),
+        #                 "end": seg.get("end", None),
+        #                 "speaker": seg.get("speaker", "N/A"),
+        #                 "text": seg.get("text", "").strip()}
+        #                 for seg in segments]
+        #             },
+        #             f, indent=2, ensure_ascii=False)
+        # if 'text' in output_types:
+        #     text_path = os.path.join(output_dir, f"{now}_{base_name}.txt")
+        #     with open(text_path, 'w', encoding='utf-8') as f:
+        #         for seg in segments:
+        #             start_str = self._format_time(seg["start"])
+        #             end_str = self._format_time(seg.get("end",None))
+        #             f.write(f"[{start_str} / {end_str}] ({seg.get('speaker', 'N/A')}):\n{seg['text'].strip()}\n\n")
+        # if 'dense' in output_types:
+        #     text_dense_path = os.path.join(output_dir, f"{now}_{base_name}.dense.txt")
+        #     with open(text_dense_path, 'w', encoding='utf-8') as f:
+        #         for seg in segments:
+        #             start_str = self._format_time(seg["start"])
+        #             end_str = self._format_time(seg.get("end",None))
+        #             f.write(f"[{start_str} / {end_str}] ({seg.get('speaker', 'N/A')}): {seg['text'].strip()}\n")
+        # if 'raw' in output_types:
+        #     text_raw_path = os.path.join(output_dir, f"{now}_{base_name}.raw.txt")
+        #     with open(text_raw_path, 'w', encoding='utf-8') as f:
+        #         for seg in segments:
+        #             f.write(f"{seg['text'].strip()}\n")
 
     def _handle_large_files(self, input_file, clip_dir) -> list[str]:
         """Determine if file size exceeds 1 GB, split if yes."""
@@ -177,18 +101,18 @@ class TranscriptionStrategy(ABC):
 
 class NonDiarizedSingleStreamStrategy(TranscriptionStrategy):
     """Transcribes single or multi-stream audio as a single speaker."""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count) -> None:
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count, output_base_name) -> None:
         model = whisperx.load_model("large", device="cuda", compute_type="float16", language=language)
         model.options.initial_prompt = initial_prompt
         for input_file in input_files:
             result = model.transcribe(input_file, print_progress=True)
             segments = result["segments"]
-            self._generate_outputs([input_file], output_dir, output_types, segments)
+            self._generate_outputs([input_file], output_dir, output_types, segments, output_base_name)
 
 
 class DiarizedMultiClipTest(TranscriptionStrategy):
     """Tests for processing multiple sequentially arranged files."""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count)-> None:
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count, output_base_name) -> None:
         """Pyannote embedding matching."""
         pipeline = pyannote.audio.Pipeline.from_pretrained(
             "pyannote/speaker-diarization-3.1"
@@ -203,7 +127,7 @@ class DiarizedMultiClipTest(TranscriptionStrategy):
 
         # TODO if more than 1 file, do embedding matching
         
-    def process2(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count) -> None:
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count, output_base_name) -> None:
         """Sliding window processing."""
         step = 1.0
         duration = 3.0
@@ -345,7 +269,7 @@ class DiarizedMultiClipTest(TranscriptionStrategy):
 
 class DiarizedSingleStreamStrategy(TranscriptionStrategy):
     """Transcribes single-stream audio with speaker diarization."""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count) -> None:
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count, output_base_name) -> None:
         model = whisperx.load_model("large", device="cuda", compute_type="float16", language=language)
         model.options.initial_prompt = initial_prompt
         embedding_model = pyannote.audio.Inference("pyannote/embedding", device=torch.device("cuda"))
@@ -372,24 +296,25 @@ class DiarizedSingleStreamStrategy(TranscriptionStrategy):
                     segment["speaker"] = speaker_map[clusters[i]]
                     del segment["embedding"]
                 sorted_segments = sorted(all_segments, key=lambda x: x["start"])
-                self._generate_outputs([input_file], output_dir, output_types, sorted_segments)
+                self._generate_outputs([input_file], output_dir, output_types, sorted_segments, output_base_name)
 
 
 class NonDiarizedMultiStreamStrategy(TranscriptionStrategy):
     """Transcribes multi-stream audio, each stream as a different speaker."""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count) -> None:
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count, output_base_name) -> None:
         model = whisperx.load_model("large", device="cuda", compute_type="float16", language=language)
         model.options.initial_prompt = initial_prompt
         for idx, input_file in enumerate(input_files):
             speaker = f"Speaker {idx + 1}"
             result = model.transcribe(input_file, tqdm_progress=True)
             segments = result["segments"]
-            self._generate_outputs(input_file, output_dir, output_types, segments, speaker)
+            # self._generate_outputs(input_file, output_dir, output_types, segments, speaker)
+            self._generate_outputs(input_file, output_dir, output_types, segments, output_base_name)
 
 
 class NonDiarizedAlignedFilesStrategy(TranscriptionStrategy):
     """Transcribes multiple aligned files, each as a separate speaker, into a combined output."""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count) -> None:
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count, output_base_name) -> None:
         model = whisperx.load_model("large", device="cuda", compute_type="float16", language=language)
         model.options.initial_prompt = initial_prompt
         all_segments = []
@@ -401,4 +326,4 @@ class NonDiarizedAlignedFilesStrategy(TranscriptionStrategy):
             for seg in segments:
                 all_segments.append({"start": seg["start"], "end": seg["end"], "text": seg["text"], "speaker": speaker})
         sorted_segments = sorted(all_segments, key=lambda x: x["start"])
-        self._generate_outputs(input_files, output_dir, output_types, sorted_segments)
+        self._generate_outputs(input_files, output_dir, output_types, sorted_segments, output_base_name)
