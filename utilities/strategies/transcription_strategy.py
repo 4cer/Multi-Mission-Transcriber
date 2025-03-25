@@ -67,7 +67,7 @@ class TranscriptionStrategy(ABC):
             text_raw_path = os.path.join(output_dir, f"{now}_{base_name}.raw.txt")
             with open(text_raw_path, 'w', encoding='utf-8') as f:
                 for seg in segments:
-                    f.write(f"{seg['text']}\n")
+                    f.write(f"{seg['text'].strip()}\n")
 
     def _handle_large_files(self, input_file, clip_dir):
         if os.path.getsize(input_file) > 1024 * 1024 * 1024:  # 1GB
