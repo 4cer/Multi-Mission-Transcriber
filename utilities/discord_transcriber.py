@@ -55,12 +55,14 @@ class TranscriberBuilder:
 
     def with_initial_prompt(self, prompt_type, prompt):
         if prompt_type == 'string':
-            self.initial_prompt = PromptBuilder.from_string(prompt)
+            self.initial_prompt = PromptBuilder.from_string(prompt).strip()
         elif prompt_type == 'directory':
-            self.initial_prompt = PromptBuilder.from_directory(prompt)
+            self.initial_prompt = PromptBuilder.from_directory(prompt).strip()
         else:
             self.initial_prompt = None
-        print(f"[INITIAL PROMPT SET]\n{self.initial_prompt}\n")
+        if self.initial_prompt and len(self.initial_prompt) > 1024:
+            raise ValueError("Initial prompt mustn't exceed 1024 characters!")
+        print(f"[INITIAL PROMPT SET]\n{self.initial_prompt}\nLength: {len(self.initial_prompt)}\n")
         return self
 
     def with_output_types(self, output_types):
