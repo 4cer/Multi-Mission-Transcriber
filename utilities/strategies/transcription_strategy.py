@@ -19,13 +19,17 @@ import math
 import librosa
 import sounddevice as sd
 
+from __future__ import annotations
+from types import MappingProxyType
 
-class TranscriptionStrategy(ABC):
+
+class OutputFormatStrategy(ABC):
     @abstractmethod
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count) -> None:
-        pass
+    def output(self, input_files: list[str], output_dir: str, segments: list[dict], output_title: str = None) -> None:
+        ...
 
-    def _format_time(self, seconds) -> str:
+    @staticmethod
+    def _format_time( seconds) -> str:
         """Transform {seconds from recording start} into a HH:MM:SS:ssss format."""
         if seconds == None:
             return "--:--:--:---"
@@ -33,6 +37,78 @@ class TranscriptionStrategy(ABC):
         hours, remainder = divmod(td.total_seconds(), 3600)
         minutes, seconds = divmod(remainder, 60)
         return f"{int(hours):02d}:{int(minutes):02d}:{seconds:06.3f}"
+    
+
+class OutputJson(OutputFormatStrategy):
+    def output(self, input_files: list[str], output_dir: str, segments: list[dict], output_title: str = None) -> None:
+        base_name = output_title if output_title else os.path.splitext(os.path.basename("_".join(input_files)))[0]
+        now = int(time.time())
+        json_path = os.path.join(output_dir, f"{now}_{base_name}.json")
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(
+                {"segments": [{
+                    "start": seg.get("start", None),
+                    "end": seg.get("end", None),
+                    "speaker": seg.get("speaker", "N/A"),
+                    "text": seg.get("text", "").strip()}
+                    for seg in segments]
+                },
+                f, indent=2, ensure_ascii=False)
+    
+
+class OutputText(OutputFormatStrategy):
+    def output(self, input_files: list[str], output_dir: str, segments: list[dict], output_title: str = None) -> None:
+        base_name = output_title if output_title else os.path.splitext(os.path.basename("_".join(input_files)))[0]
+        now = int(time.time())
+        text_path = os.path.join(output_dir, f"{now}_{base_name}.txt")
+        with open(text_path, 'w', encoding='utf-8') as f:
+            for seg in segments:
+                start_str = self._format_time(seg["start"])
+                end_str = self._format_time(seg.get("end",None))
+                f.write(f"[{start_str} / {end_str}] ({seg.get('speaker', 'N/A')}):\n{seg['text'].strip()}\n\n")
+    
+
+class OutputDense(OutputFormatStrategy):
+    def output(self, input_files: list[str], output_dir: str, segments: list[dict], output_title: str = None) -> None:
+        base_name = output_title if output_title else os.path.splitext(os.path.basename("_".join(input_files)))[0]
+        now = int(time.time())
+        text_dense_path = os.path.join(output_dir, f"{now}_{base_name}.dense.txt")
+        with open(text_dense_path, 'w', encoding='utf-8') as f:
+            for seg in segments:
+                start_str = self._format_time(seg["start"])
+                end_str = self._format_time(seg.get("end",None))
+                f.write(f"[{start_str} / {end_str}] ({seg.get('speaker', 'N/A')}): {seg['text'].strip()}\n")
+    
+
+class OutputRaw(OutputFormatStrategy):
+    def output(self, input_files: list[str], output_dir: str, segments: list[dict], output_title: str = None) -> None:
+        base_name = output_title if output_title else os.path.splitext(os.path.basename("_".join(input_files)))[0]
+        now = int(time.time())
+        text_raw_path = os.path.join(output_dir, f"{now}_{base_name}.raw.txt")
+        with open(text_raw_path, 'w', encoding='utf-8') as f:
+            for seg in segments:
+                f.write(f"{seg['text'].strip()}\n")
+    
+
+class OutputFormatStrategyFactory():
+    _strategy_mapping = MappingProxyType(
+        {
+            'json': OutputJson(),
+            'text': OutputText(),
+            'dense': OutputDense(),
+            'raw': OutputRaw()
+        }
+    )
+
+    @staticmethod
+    def get_strategy(output_type: str) -> OutputFormatStrategy:
+        return OutputFormatStrategy._strategy_mapping[output_type]
+
+
+class TranscriptionStrategy(ABC):
+    @abstractmethod
+    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count) -> None:
+        pass
 
     def _generate_outputs(self, input_files: list[str], output_dir: str, output_types: list[str], segments: list[dict]) -> None:
         """Write labeled segments with text, speaker, timestamps to selected file format(s)"""
@@ -127,7 +203,6 @@ class DiarizedMultiClipTest(TranscriptionStrategy):
 
         # TODO if more than 1 file, do embedding matching
         
-
     def process2(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count) -> None:
         """Sliding window processing."""
         step = 1.0
@@ -327,4 +402,3 @@ class NonDiarizedAlignedFilesStrategy(TranscriptionStrategy):
                 all_segments.append({"start": seg["start"], "end": seg["end"], "text": seg["text"], "speaker": speaker})
         sorted_segments = sorted(all_segments, key=lambda x: x["start"])
         self._generate_outputs(input_files, output_dir, output_types, sorted_segments)
-
