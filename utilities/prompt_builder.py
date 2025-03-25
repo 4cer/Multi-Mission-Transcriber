@@ -4,7 +4,7 @@ import glob
 class PromptBuilder:
     @staticmethod
     def from_string(prompt_str) -> str:
-        """Builds prompt from a full string."""
+        """Sets initial prompt from a string given by user without changes."""
         return prompt_str
 
     @staticmethod
