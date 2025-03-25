@@ -3,7 +3,7 @@ import glob
 
 class PromptBuilder:
     @staticmethod
-    def from_string(prompt_str):
+    def from_string(prompt_str) -> str:
         """Builds prompt from a full string."""
         return prompt_str
 
@@ -26,12 +26,12 @@ class PromptBuilder:
         prompt_parts = []
         prefix_path = os.path.join(prompt_dir, 'prefix')
         if os.path.exists(prefix_path):
-            with open(prefix_path, 'r') as f:
+            with open(prefix_path, 'r', encoding='utf8') as f:
                 prompt_parts.append(f.readline().strip())
         
         for list_file in glob.glob(os.path.join(prompt_dir, '*.list')):
             category = os.path.splitext(os.path.basename(list_file))[0]
-            with open(list_file, 'r') as f:
+            with open(list_file, 'r', encoding='utf8') as f:
                 items = [line.strip() for line in f if line.strip()]
                 if items:
                     prompt_parts.append(f"{category}:{','.join(items)}")
