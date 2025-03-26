@@ -24,7 +24,7 @@ class OutputFormatStrategy(ABC):
 
 class OutputJson(OutputFormatStrategy):
     def output(self, segments: list[dict], output_dir: str, timestamp: int, output_base_name: str = None) -> None:
-        json_path = os.path.join(output_dir, f"{timestamp}_{output_base_name}.json")
+        json_path = os.path.join(output_dir, f"{timestamp}_{output_base_name}-3.json")
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(
                 {"segments": [{
@@ -39,7 +39,7 @@ class OutputJson(OutputFormatStrategy):
 
 class OutputText(OutputFormatStrategy):
     def output(self, segments: list[dict], output_dir: str, timestamp: int, output_base_name: str = None) -> None:
-        text_path = os.path.join(output_dir, f"{timestamp}_{output_base_name}.txt")
+        text_path = os.path.join(output_dir, f"{timestamp}_{output_base_name}-1.txt")
         with open(text_path, 'w', encoding='utf-8') as f:
             for seg in segments:
                 start_str = self._format_time(seg["start"])
@@ -49,7 +49,7 @@ class OutputText(OutputFormatStrategy):
 
 class OutputDense(OutputFormatStrategy):
     def output(self, segments: list[dict], output_dir: str, timestamp: int, output_base_name: str = None) -> None:
-        text_dense_path = os.path.join(output_dir, f"{timestamp}_{output_base_name}.dense.txt")
+        text_dense_path = os.path.join(output_dir, f"{timestamp}_{output_base_name}-0.dense.txt")
         with open(text_dense_path, 'w', encoding='utf-8') as f:
             for seg in segments:
                 start_str = self._format_time(seg["start"])
@@ -59,7 +59,7 @@ class OutputDense(OutputFormatStrategy):
 
 class OutputRaw(OutputFormatStrategy):
     def output(self, segments: list[dict], output_dir: str, timestamp: int, output_base_name: str = None) -> None:
-        text_raw_path = os.path.join(output_dir, f"{timestamp}_{output_base_name}.raw.txt")
+        text_raw_path = os.path.join(output_dir, f"{timestamp}_{output_base_name}-2.raw.txt")
         with open(text_raw_path, 'w', encoding='utf-8') as f:
             for seg in segments:
                 f.write(f"{seg['text'].strip()}\n")
