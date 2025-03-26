@@ -45,7 +45,7 @@ if __name__ == "__main__":
         .with_output_types(args.output_types)
         .with_language(args.language)
         .with_speaker_count(args.speakers_min, args.speakers_max, args.speaker_count)
-        .with_base_name(args.output_base_name)
+        .with_output_base_name(args.output_base_name)
         .build()
     )
 
