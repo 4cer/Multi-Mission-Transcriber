@@ -77,4 +77,4 @@ class OutputFormatStrategyFactory():
 
     @staticmethod
     def get_strategy(output_type: str) -> OutputFormatStrategy:
-        return OutputFormatStrategy._strategy_mapping[output_type]
+        return OutputFormatStrategyFactory._strategy_mapping[output_type]
