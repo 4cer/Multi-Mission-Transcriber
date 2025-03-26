@@ -177,6 +177,7 @@ cython_debug/
 /clips/*
 /testfiles/*
 /prompt/*
+!/prompt/testA
 /output/*
 temp_converted.wav
 
