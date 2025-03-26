@@ -36,40 +36,6 @@ class TranscriptionStrategy(ABC):
             strategy = OFSF.get_strategy(tp)
             strategy.output(segments, output_dir, now, base_name)
 
-        # base_name = os.path.splitext(os.path.basename("_".join(input_files)))[0]
-        # now = int(time.time())
-        # if 'json' in output_types:
-        #     json_path = os.path.join(output_dir, f"{now}_{base_name}.json")
-        #     with open(json_path, 'w', encoding='utf-8') as f:
-        #         json.dump(
-        #             {"segments": [{
-        #                 "start": seg.get("start", None),
-        #                 "end": seg.get("end", None),
-        #                 "speaker": seg.get("speaker", "N/A"),
-        #                 "text": seg.get("text", "").strip()}
-        #                 for seg in segments]
-        #             },
-        #             f, indent=2, ensure_ascii=False)
-        # if 'text' in output_types:
-        #     text_path = os.path.join(output_dir, f"{now}_{base_name}.txt")
-        #     with open(text_path, 'w', encoding='utf-8') as f:
-        #         for seg in segments:
-        #             start_str = self._format_time(seg["start"])
-        #             end_str = self._format_time(seg.get("end",None))
-        #             f.write(f"[{start_str} / {end_str}] ({seg.get('speaker', 'N/A')}):\n{seg['text'].strip()}\n\n")
-        # if 'dense' in output_types:
-        #     text_dense_path = os.path.join(output_dir, f"{now}_{base_name}.dense.txt")
-        #     with open(text_dense_path, 'w', encoding='utf-8') as f:
-        #         for seg in segments:
-        #             start_str = self._format_time(seg["start"])
-        #             end_str = self._format_time(seg.get("end",None))
-        #             f.write(f"[{start_str} / {end_str}] ({seg.get('speaker', 'N/A')}): {seg['text'].strip()}\n")
-        # if 'raw' in output_types:
-        #     text_raw_path = os.path.join(output_dir, f"{now}_{base_name}.raw.txt")
-        #     with open(text_raw_path, 'w', encoding='utf-8') as f:
-        #         for seg in segments:
-        #             f.write(f"{seg['text'].strip()}\n")
-
     def _handle_large_files(self, input_file, clip_dir) -> list[str]:
         """Determine if file size exceeds 1 GB, split if yes."""
         if os.path.getsize(input_file) > 1024 * 1024 * 1024:  # 1GB
