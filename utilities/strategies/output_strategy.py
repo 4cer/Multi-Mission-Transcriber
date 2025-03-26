@@ -77,4 +77,7 @@ class OutputFormatStrategyFactory():
 
     @staticmethod
     def get_strategy(output_type: str) -> OutputFormatStrategy:
-        return OutputFormatStrategyFactory._strategy_mapping[output_type]
+        strategy = OutputFormatStrategyFactory._strategy_mapping.get(output_type, None)
+        if not strategy:
+            raise ValueError(f"Unknown output format strategy: {output_type}!")
+        return strategy
