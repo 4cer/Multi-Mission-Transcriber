@@ -1,10 +1,4 @@
-from utilities.strategies.transcription_strategy import (
-    NonDiarizedSingleStreamStrategy,
-    DiarizedSingleStreamStrategy,
-    NonDiarizedMultiStreamStrategy,
-    NonDiarizedAlignedFilesStrategy,
-    DiarizedMultiClipTest
-)
+from utilities.strategies.transcription_strategy import TranscriptionStrategyFactory
 from utilities.prompt_builder import PromptBuildStrategyFactory
 from dotenv import load_dotenv
 import os
@@ -21,24 +15,7 @@ class TranscriberBuilder:
         self.language = None
 
     def with_strategy(self, strategy_name):
-        strategy_map = {
-            'non-diarized-single': NonDiarizedSingleStreamStrategy(),
-            'nds': NonDiarizedSingleStreamStrategy(),
-
-            'diarized-single': DiarizedSingleStreamStrategy(),
-            'ds': DiarizedSingleStreamStrategy(),
-
-            'non-diarized-multi': NonDiarizedMultiStreamStrategy(),
-            'ndm': NonDiarizedMultiStreamStrategy(),
-
-            'non-diarized-aligned': NonDiarizedAlignedFilesStrategy(),
-            'nda': NonDiarizedAlignedFilesStrategy(),
-
-            'test': DiarizedMultiClipTest()
-        }
-        self.strategy = strategy_map.get(strategy_name)
-        if not self.strategy:
-            raise ValueError(f"Unknown strategy: {strategy_name}")
+        self.strategy = TranscriptionStrategyFactory.get_strategy(strategy_name)
         return self
 
     def with_input_files(self, input_files):

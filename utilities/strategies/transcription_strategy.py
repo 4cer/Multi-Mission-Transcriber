@@ -11,7 +11,6 @@ import subprocess
 import glob
 import shutil
 import os
-import json
 import time
 from silero_vad import load_silero_vad, read_audio, get_speech_timestamps
 import math
@@ -19,7 +18,8 @@ import math
 import librosa
 import sounddevice as sd
 
-from utilities.strategies.output_strategy import OutputFormatStrategyFactory as OFSF
+from utilities.strategies.output_strategy import OutputFormatStrategyFactory
+from types import MappingProxyType
 
 
 class TranscriptionStrategy(ABC):
@@ -33,7 +33,7 @@ class TranscriptionStrategy(ABC):
         base_name = output_base_name if output_base_name else os.path.splitext(os.path.basename("_".join(input_files)))[0]
 
         for tp in output_types:
-            strategy = OFSF.get_strategy(tp)
+            strategy = OutputFormatStrategyFactory.get_strategy(tp)
             strategy.output(segments, output_dir, now, base_name)
 
     def _handle_large_files(self, input_file, clip_dir) -> list[str]:
@@ -293,3 +293,28 @@ class NonDiarizedAlignedFilesStrategy(TranscriptionStrategy):
                 all_segments.append({"start": seg["start"], "end": seg["end"], "text": seg["text"], "speaker": speaker})
         sorted_segments = sorted(all_segments, key=lambda x: x["start"])
         self._generate_outputs(input_files, output_dir, output_types, sorted_segments, output_base_name)
+
+
+class TranscriptionStrategyFactory():
+    _strategy_mapping = MappingProxyType({
+        'non-diarized-single': NonDiarizedSingleStreamStrategy(),
+        'nds': NonDiarizedSingleStreamStrategy(),
+
+        'diarized-single': DiarizedSingleStreamStrategy(),
+        'ds': DiarizedSingleStreamStrategy(),
+
+        'non-diarized-multi': NonDiarizedMultiStreamStrategy(),
+        'ndm': NonDiarizedMultiStreamStrategy(),
+
+        'non-diarized-aligned': NonDiarizedAlignedFilesStrategy(),
+        'nda': NonDiarizedAlignedFilesStrategy(),
+
+        'test': DiarizedMultiClipTest()
+    })
+    
+    @staticmethod
+    def get_strategy(transcription_strategy: str):
+        strategy = TranscriptionStrategyFactory._strategy_mapping.get(transcription_strategy, None)
+        if not strategy:
+            raise ValueError(f"Incorrect transcription strategy: {transcription_strategy}!")
+        return strategy
