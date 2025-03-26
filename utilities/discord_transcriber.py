@@ -5,7 +5,7 @@ from utilities.strategies.transcription_strategy import (
     NonDiarizedAlignedFilesStrategy,
     DiarizedMultiClipTest
 )
-from utilities.prompt_builder import PromptBuilder
+from utilities.prompt_builder import PromptBuildStrategyFactory
 from dotenv import load_dotenv
 import os
 
@@ -54,12 +54,9 @@ class TranscriberBuilder:
         return self
 
     def with_initial_prompt(self, prompt_type, prompt):
-        if prompt_type == 'string':
-            self.initial_prompt = PromptBuilder.from_string(prompt).strip()
-        elif prompt_type == 'directory':
-            self.initial_prompt = PromptBuilder.from_directory(prompt).strip()
-        else:
-            self.initial_prompt = None
+        prompt_assembled = PromptBuildStrategyFactory.get_strategy(prompt_type).build(prompt)
+        self.initial_prompt = prompt_assembled.strip() if prompt_assembled else None
+
         if self.initial_prompt and len(self.initial_prompt) > 1024:
             raise ValueError("Initial prompt mustn't exceed 1024 characters!")
         print(f"[INITIAL PROMPT SET]\n{self.initial_prompt}\nLength: {len(self.initial_prompt)}\n")

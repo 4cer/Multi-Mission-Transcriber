@@ -9,10 +9,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Diarize and transcribe Discord conversation recordings", epilog="Further help can be found at https://github.com/4cer/SessionTranscriber")
     parser.add_argument('-i', '--input', action='append', required=True, help='Input audio file(s)')
     parser.add_argument('-o', '--output-directory', default="output", help='Output directory for final results')
-    parser.add_argument('-b', '--output-base-name', help='Output file base name, which gets type and extension appended to it.')
+    parser.add_argument('-b', '--output-base-name', type=str, help='Output file base name, extended with type and extension for each output type.')
     parser.add_argument('-c', '--clip-directory', default="clips", help='Intermediate clip directory for split files')
     parser.add_argument('-s', '--strategy', choices=['non-diarized-single', 'diarized-single', 'non-diarized-multi', 'non-diarized-aligned', 'nds', 'ds', 'ndm', 'nda', 'test'], required=True, help='Transcription strategy')
-    parser.add_argument('-t', '--prompt-type', choices=['string', 'directory'], help='Type of initial prompt (string or directory)')
+    parser.add_argument('-t', '--prompt-type', choices=['string', 'directory', 'str', 'dir'], help='Type of initial prompt (string or directory)')
     parser.add_argument('-p', '--prompt', help='Initial prompt string or directory path')
     output_types = ['json', 'text', 'dense', 'raw']
     parser.add_argument('-f', '--output-types', nargs='+', choices=output_types, required=True, help=f'Output types ({", ".join(output_types)} or any combination)')
