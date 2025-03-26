@@ -5,7 +5,7 @@ import os
 
 class TranscriberBuilder:
     """Builder for creating DiscordTranscriber instances."""
-    def __init__(self):
+    def __init__(self, verbosity: int = 0, suppress_warnings: bool = False):
         self.strategy = None
         self.input_files = []
         self.output_dir = None
@@ -13,6 +13,12 @@ class TranscriberBuilder:
         self.initial_prompt = None
         self.output_types = []
         self.language = None
+
+        if verbosity < 0:
+            raise ValueError("Verbosity must be an integer, 0 <= verbosity <= 5")
+
+        self._BUILDER_ONLY_verbosity = verbosity
+        self._BUILDER_ONLY_suppress_warnings = suppress_warnings
 
     def with_strategy(self, strategy_name):
         self.strategy = TranscriptionStrategyFactory.get_strategy(strategy_name)
@@ -36,7 +42,7 @@ class TranscriberBuilder:
 
         if self.initial_prompt and len(self.initial_prompt) > 1024:
             raise ValueError("Initial prompt mustn't exceed 1024 characters!")
-        print(f"[INITIAL PROMPT SET]\n{self.initial_prompt}\nLength: {len(self.initial_prompt)}\n")
+        self._BUILDER_ONLY_verbosity > 0 and print(f"[INITIAL PROMPT SET] [LENGTH: {len(self.initial_prompt)}]\n{self.initial_prompt}\n")
         return self
 
     def with_output_types(self, output_types):

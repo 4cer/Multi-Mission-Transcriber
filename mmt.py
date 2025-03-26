@@ -20,6 +20,8 @@ if __name__ == "__main__":
     parser.add_argument('-m', '--speakers-min', type=int, help="The expected maximum of speaker identities. The number excludes non-speaker noise/silence")
     parser.add_argument('-x', '--speakers-max', type=int, help="The expected minimum of speaker identities. The number excludes non-speaker noise/silence")
     parser.add_argument('-e', '--speaker-count', type=int, help="The expected exact count of speakers, mutually exclusive with -m -x")
+    parser.add_argument('-v', '--verbose', action='count', default=0, help="Builder verbosity: level (Default is 0).")
+    parser.add_argument('-w', '--suppress-warnings', action='store_true', help="Suppress warnings from constituent libraries and models.")
     args = parser.parse_args()
 
     # Enforce XOR for prompt-type and prompt
@@ -35,7 +37,7 @@ if __name__ == "__main__":
     os.makedirs(args.clip_directory, exist_ok=True)
 
     # Build the transcriber
-    builder = TranscriberBuilder()
+    builder = TranscriberBuilder(verbosity=args.verbose, suppress_warnings=args.suppress_warnings)
     transcriber = (builder
         .with_strategy(args.strategy)
         .with_input_files(args.input)
