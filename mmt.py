@@ -9,6 +9,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Diarize and transcribe Discord conversation recordings", epilog="Further help can be found at https://github.com/4cer/SessionTranscriber")
     parser.add_argument('-i', '--input', action='append', required=True, help='Input audio file(s)')
     parser.add_argument('-o', '--output-directory', default="output", help='Output directory for final results')
+    parser.add_argument('-b', '--output-base-name', help='Output file base name, which gets type and extension appended to it.')
     parser.add_argument('-c', '--clip-directory', default="clips", help='Intermediate clip directory for split files')
     parser.add_argument('-s', '--strategy', choices=['non-diarized-single', 'diarized-single', 'non-diarized-multi', 'non-diarized-aligned', 'nds', 'ds', 'ndm', 'nda', 'test'], required=True, help='Transcription strategy')
     parser.add_argument('-t', '--prompt-type', choices=['string', 'directory'], help='Type of initial prompt (string or directory)')
@@ -44,6 +45,7 @@ if __name__ == "__main__":
         .with_output_types(args.output_types)
         .with_language(args.language)
         .with_speaker_count(args.speakers_min, args.speakers_max, args.speaker_count)
+        .with_base_name(args.output_base_name)
         .build()
     )
 
