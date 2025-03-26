@@ -76,4 +76,7 @@ class PromptBuildStrategyFactory():
 
     @staticmethod
     def get_strategy(prompt_type: str):
-        return PromptBuildStrategyFactory._strategy_mapping[prompt_type]
+        strategy = PromptBuildStrategyFactory._strategy_mapping.get(prompt_type, None)
+        if not strategy:
+            raise ValueError(f"Unknown prompt build strategy: {prompt_type}!")
+        return strategy
