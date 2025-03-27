@@ -52,7 +52,7 @@ class PromptDirectoryStrategy(PromptBuildStrategy):
         
         suffix_path = os.path.join(prompt_path, 'suffix')
         if os.path.exists(suffix_path):
-            with open(suffix_path, 'r') as f:
+            with open(suffix_path, 'r', encoding='utf8') as f:
                 prompt_parts.append(f.readline().strip())
         
         return ' '.join(prompt_parts)
