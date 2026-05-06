@@ -13,6 +13,7 @@ class TranscriberBuilder:
         self.initial_prompt = None
         self.output_types = []
         self.language = None
+        self.model = None
 
         if verbosity < 0:
             raise ValueError("Verbosity must be an integer, 0 <= verbosity <= 5")
@@ -63,6 +64,10 @@ class TranscriberBuilder:
         self.output_base_name = output_base_name
         return self
 
+    def with_model(self, model: str):
+        self.model = model
+        return self
+
     def build(self):
         if not all([self.strategy, self.input_files, self.output_dir, self.clip_dir, self.output_types]):
             raise ValueError("All required fields must be set before building")
@@ -77,12 +82,13 @@ class TranscriberBuilder:
             speakers_min=self.speakers_min,
             speakers_max=self.speakers_max,
             speaker_count=self.speaker_count,
-            output_base_name = self.output_base_name
+            output_base_name = self.output_base_name,
+            model=self.model
         )
 
 class DiscordTranscriber:
     """Processes audio files using the selected strategy."""
-    def __init__(self, strategy, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count, output_base_name):
+    def __init__(self, strategy, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count, output_base_name, model):
         self.strategy = strategy
         self.input_files = input_files
         self.output_dir = output_dir
@@ -94,6 +100,7 @@ class DiscordTranscriber:
         self.speakers_max = speakers_max
         self.speaker_count = speaker_count
         self.output_base_name = output_base_name
+        self.model = model
         self._load_env()
 
     def _load_env(self):
@@ -104,4 +111,4 @@ class DiscordTranscriber:
         os.environ["HF_TOKEN"] = hf_token
 
     def process(self):
-        self.strategy.process(self.input_files, self.output_dir, self.clip_dir, self.initial_prompt, self.output_types, self.language, self.speakers_min, self.speakers_max, self.speaker_count, self.output_base_name)
+        self.strategy.process(self.input_files, self.output_dir, self.clip_dir, self.initial_prompt, self.output_types, self.language, self.speakers_min, self.speakers_max, self.speaker_count, self.output_base_name, self.model)
