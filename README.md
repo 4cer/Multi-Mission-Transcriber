@@ -82,6 +82,72 @@ python mmt.py `
     --output-base-name "Name of output"
 ```
 
+### Directory-Based Prompts
+
+When using the `directory` prompt type, organize your prompt across multiple text files in a directory. This approach is especially useful for TTRPG sessions where you want Whisper to recognize domain-specific vocabulary.
+
+A prompt directory contains:
+- **`prefix`** (optional) — Context or instructions at the start of the prompt
+- **`suffix`** (optional) — Instructions or notes at the end of the prompt
+- **`{Name}.list`** files (0 or more) — One list per file, each containing newline-separated items
+
+The final prompt is assembled as: `{prefix} {Name1}:{comma-separated items}. {Name2}:{comma-separated items}. ... {suffix}`
+
+#### Example: D&D Campaign Prompt
+
+Directory structure:
+```
+prompt/example_forgotten_realms/
+├── prefix
+├── suffix
+├── Empty.list
+├── Characters.list
+├── Locations.list
+└── Monsters.list
+```
+
+**Contents of `prefix`:**
+```
+This is a recording of a Dungeons & Dragons 5th Edition campaign set in the Forgotten Realms.
+```
+
+**Contents of `Characters.list`:**
+The file is empty and thus won't be included.
+
+**Contents of `Characters.list`:**
+```
+Theron Blackwood
+Lyra Stormborn
+Kai the Dwarf
+```
+
+**Contents of `Locations.list`:**
+```
+Waterdeep
+Baldur's Gate
+Neverwinter
+```
+
+**Contents of `Monsters.list`:**
+```
+Beholder
+Displacer Beast
+Mind Flayer
+Tarrasque
+```
+
+**Contents of `suffix`:**
+```
+Preserve proper nouns and technical D&D terminology.
+```
+
+**Resulting prompt:**
+```
+This is a recording of a Dungeons & Dragons 5th Edition campaign set in the Forgotten Realms. Characters:Theron Blackwood,Lyra Stormborn,Kai the Dwarf. Locations:Waterdeep,Baldur's Gate,Neverwinter. Monsters:Beholder,Displacer Beast,Mind Flayer,Tarrasque. Preserve proper nouns and technical D&D terminology.
+```
+
+This guides the transcriber to recognize campaign-specific names and terminology, reducing errors in the transcript.
+
 ### Arguments
 | Argument | Accepted Values | Description | Multiplicty | Required |
 | :------- | :-------------- | :---------- | :---------: | :------: |

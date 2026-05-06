@@ -177,7 +177,7 @@ cython_debug/
 /clips/*
 /testfiles/*
 /prompt/*
-!/prompt/testA
+!/prompt/example_forgotten_realms
 /output/*
 temp_converted.wav
 
