@@ -148,6 +148,78 @@ This is a recording of a Dungeons & Dragons 5th Edition campaign set in the Forg
 
 This guides the transcriber to recognize campaign-specific names and terminology, reducing errors in the transcript.
 
+### Output Formats
+
+MMT supports four transcript output formats, controlled via the `--output-types` argument. Each captures the same transcription data in different ways, suited for different use cases.
+
+#### Dense (`.dense.txt`)
+
+One segment per line with timing, speaker, and text. Compact and suitable for quick scanning or line-based processing.
+
+```
+[00:00:15.324 / 00:00:22.891] (Speaker 1 (player_1_audio)): We enter the tavern cautiously.
+[00:00:23.105 / 00:00:31.444] (Speaker 2 (dm_audio)): The barkeep looks up suspiciously.
+[00:00:31.789 / 00:00:38.201] (Speaker 1 (player_1_audio)): I cast detect magic on the room.
+```
+
+**Speaker labels:**
+- Single file or simple diarization: `Speaker 1`, `Speaker 2`, etc.
+- Multi-stream recording: `Speaker 1 (filename)`, `Speaker 2 (filename)`, etc. (filename derived from input file basename)
+
+#### Text (`.txt`)
+
+Multi-line segments with timing, speaker, and text separated by blank lines. Easy to read and edit.
+
+```
+[00:00:15.324 / 00:00:22.891] (Speaker 1 (player_1_audio)):
+We enter the tavern cautiously.
+
+[00:00:23.105 / 00:00:31.444] (Speaker 2 (dm_audio)):
+The barkeep looks up suspiciously.
+
+[00:00:31.789 / 00:00:38.201] (Speaker 1 (player_1_audio)):
+I cast detect magic on the room.
+```
+
+#### JSON (`.json`)
+
+Structured format containing an array of segment objects with start time, end time, speaker, and text. Ideal for programmatic processing or import into other tools.
+
+```json
+{
+  "segments": [
+    {
+      "start": 15.324,
+      "end": 22.891,
+      "speaker": "Speaker 1 (player_1_audio)",
+      "text": "We enter the tavern cautiously."
+    },
+    {
+      "start": 23.105,
+      "end": 31.444,
+      "speaker": "Speaker 2 (dm_audio)",
+      "text": "The barkeep looks up suspiciously."
+    },
+    {
+      "start": 31.789,
+      "end": 38.201,
+      "speaker": "Speaker 1 (player_1_audio)",
+      "text": "I cast detect magic on the room."
+    }
+  ]
+}
+```
+
+#### Raw (`.raw.txt`)
+
+Text only, one line per segment. No timing or speaker information. Useful for bulk text analysis or as a starting point for custom processing.
+
+```
+We enter the tavern cautiously.
+The barkeep looks up suspiciously.
+I cast detect magic on the room.
+```
+
 ### Arguments
 | Argument | Accepted Values | Description | Multiplicty | Required |
 | :------- | :-------------- | :---------- | :---------: | :------: |
