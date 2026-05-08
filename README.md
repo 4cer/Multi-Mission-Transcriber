@@ -81,7 +81,51 @@ python mmt.py `
     --model large `
     --output-base-name "Name of output"
 ```
+### Summarization
 
+MMT supports LLM-based summarization of transcripts using OpenAI-compatible APIs. The summarizer validates endpoints against known providers and can auto-correct malformed URLs.
+
+#### Quick Summarization Example
+
+Summarize an existing transcript without re-transcribing:
+```powershell
+python mmt.py `
+    --summarize `
+    --summarization-transcript output\some_transcript.dense.txt `
+    --summarization-prompt-type directory `
+    --summarization-prompt prompt\example_summarization `
+    --summary-output output\summaries `
+    --no-confirm
+```
+
+#### Summarize After Transcription
+
+Enable summarization to run automatically after transcription:
+```powershell
+python mmt.py `
+    -i files\session.aac `
+    --strategy nda `
+    --prompt-type directory `
+    --prompt prompt\dnd_campaign `
+    --summarize `
+    --summarization-prompt-type directory `
+    --summarization-prompt prompt\summarization `
+    --summary-output output\summaries `
+    --output-types json text dense raw `
+    --language en `
+    --model large
+```
+
+#### API Endpoint Configuration
+
+Set your API endpoint in `.env` (see `.env.example` for details):
+```dotenv
+LLM_API_ENDPOINT=https://openrouter.ai/api/v1/chat/completions
+LLM_API_KEY=your_api_key_here
+LLM_MODEL_ARCH=nvidia/nemotron-3-super-120b-a12b:free
+```
+
+The system recognizes 20+ providers (OpenRouter, OpenAI, DeepSeek, Qwen, Mistral, etc.) and validates that the endpoint URL is correct. Use `--no-confirm` to auto-substitute malformed endpoints.
 ### Directory-Based Prompts
 
 When using the `directory` prompt type, organize your prompt across multiple text files in a directory. This approach is especially useful for TTRPG sessions where you want Whisper to recognize domain-specific vocabulary.
@@ -235,9 +279,25 @@ I cast detect magic on the room.
 | `-M`, `--model` | One of<br>`{tiny, tiny.en, base, base.en,`<br>`small, small.en, medium,`<br>`medium.en, large, large-v1,`<br>`large-v2, large-v3}` | Whisper model size to use (default: `large`) | `1` | `False` |
 | `-v`, `--verbose` | Integer (count) | Increase verbosity level | `0+` | `False` |
 | `-w`, `--suppress-warnings` | Flag | Suppress warnings from constituent libraries and models | `0` | `False` |
+| `--summarize` | Flag | Enable summarization after transcription | `0` | `False` |
+| `--summarization-transcript` | Relative or absolute filepath | Input transcript file (also serves as summarize-only flag) | `1` | `False` |
+| `--summarization-prompt-type` | One of<br>`{string,directory}` | Type of summarization prompt (default: `directory`) | `1` | `False` |
+| `--summarization-prompt` | For prompt type `string`:<br>String of length 1024 characters or less<br>For prompt type `directory`:<br>Relative or absolute directory path | Summarization prompt directory or string (default: `prompt/summarization`) | `1` | `False` |
+| `--summary-output` | Relative or absolute filepath | Output path for summary markdown (file or directory) | `1` | `False` |
+| `--no-confirm` | Flag | Skip confirmation before sending summarization request; also auto-corrects malformed API endpoints | `0` | `False` |
 | `-h`, `--help` | N/A | Show help message and quit | `0,1` | `False` |
 
 ## Setup
+### API Endpoint Validation
+
+MMT includes automatic validation for LLM API endpoints. The system maintains a dictionary of 20+ known providers (OpenRouter, OpenAI, DeepSeek, Qwen, Mistral, etc.) with their correct full endpoints.
+
+- **Correct endpoint**: Used as-is (e.g., `https://openrouter.ai/api/v1/chat/completions`)
+- **Base URL detected**: Raises `ValueError` with expected endpoint (or auto-substitutes with `--no-confirm`)
+- **Unknown provider**: Used as-is without validation
+
+See `.env.example` for a list of correct endpoint examples.
+
 ### Hardware requirements
 _The values below pertain to the `large` model; smaller models require less VRAM/RAM._
 | Part | Minimum | Recommended |
