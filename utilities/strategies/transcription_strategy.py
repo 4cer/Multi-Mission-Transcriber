@@ -14,20 +14,45 @@ import os
 import time
 from silero_vad import load_silero_vad, read_audio, get_speech_timestamps
 import math
+import typing
+from typing import Optional
 
 import librosa
 import sounddevice as sd
 
+
 from utilities.strategies.output_strategy import OutputFormatStrategyFactory
 from types import MappingProxyType
+from utilities.pipeline_context import PipelineContext
 
 
 class TranscriptionStrategy(ABC):
     @abstractmethod
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count, output_base_name, model_name) -> None:
+    def process(
+        self,
+        input_files: list[str],
+        output_dir: str,
+        clip_dir: str,
+        initial_prompt: Optional[str],
+        output_types: list[str],
+        language: Optional[str],
+        speakers_min: Optional[int],
+        speakers_max: Optional[int],
+        speaker_count: Optional[int],
+        output_base_name: Optional[str],
+        model_name: str,
+        pipeline_context: Optional[PipelineContext],
+    ) -> None:
         pass
 
-    def _generate_outputs(self, input_files: list[str], output_dir: str, output_types: list[str], segments: list[dict], output_base_name: str = None) -> None:
+    def _generate_outputs(
+            self,
+            input_files: list[str],
+            output_dir: str,
+            output_types: list[str],
+            segments: list[dict],
+            output_base_name: Optional[str] = None
+    ) -> None:
         """Write labeled segments with text, speaker, timestamps to selected file format(s)"""
         now = int(time.time())
         base_name = output_base_name if output_base_name else os.path.splitext(os.path.basename("_".join(input_files)))[0]
@@ -38,7 +63,7 @@ class TranscriptionStrategy(ABC):
 
     def _handle_large_files(self, input_file, clip_dir) -> list[str]:
         """Determine if file size exceeds 1 GB, split if yes."""
-        if os.path.getsize(input_file) > 1024 * 1024 * 1024:  # 1GB
+        if os.path.getsize(input_file) > 1_073_741_824: # = 1GB
             return self._split_audio(input_file, clip_dir)
         else:
             clip_path = os.path.join(clip_dir, "original" + os.path.splitext(input_file)[1])

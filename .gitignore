@@ -130,6 +130,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.venvb
 env/
 venv/
 ENV/
@@ -177,7 +178,7 @@ cython_debug/
 /clips/*
 /testfiles/*
 /prompt/*
-!/prompt/example_forgotten_realms
+!/prompt/example_*
 /output/*
 temp_converted.wav
 
@@ -188,3 +189,4 @@ tf_transcribe.py
 /files/*
 mmt_config.json
 quickrun.ps1
+zmfd*

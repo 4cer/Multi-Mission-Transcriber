@@ -1,7 +1,7 @@
 import unittest
-from utilities.discord_transcriber import TranscriberBuilder
+from utilities.transcriber import TranscriberBuilder
 from utilities.strategies.output_strategy import OutputFormatStrategyFactory
-from utilities.prompt_builder import PromptBuildStrategyFactory
+from utilities.prompt_builder import PromptBuildStrategyFactory, PromptBuildContext
 
 class TestPromptBuilder(unittest.TestCase):
     def setUp(self):
@@ -11,12 +11,17 @@ class TestPromptBuilder(unittest.TestCase):
     def test_string(self):
         string = "This is an example prompt. Nothing really to see."
 
-        builder = self.factory.get_strategy('str')
-        outputa = builder.build(string)
+        ctx = PromptBuildContext(
+            prompt_data = string,
+            inner_prompt = None
+        )
+
+        builder = self.factory.get_transcription_strategy('str')
+        outputa = builder.build(ctx)
         self.assertEqual(string, outputa)
 
-        builder = self.factory.get_strategy('string')
-        outputb = builder.build(string)
+        builder = self.factory.get_transcription_strategy('string')
+        outputb = builder.build(ctx)
         self.assertEqual(string, outputb)
 
     def test_dictionary(self):
@@ -30,27 +35,60 @@ class TestPromptBuilder(unittest.TestCase):
             'Characters': ['Test Tost', 'Riggurd', 'Ricky Van Halen']
         }
 
-        builder = self.factory.get_strategy('dict')
-        outputa = builder.build(dictionary)
+        ctx = PromptBuildContext(
+            prompt_data = dictionary,
+            inner_prompt = None
+        )
+
+        builder = self.factory.get_transcription_strategy('dict')
+        outputa = builder.build(ctx)
         self.assertEqual(expected, outputa)
 
-        builder = self.factory.get_strategy('dictionary')
-        outputb = builder.build(dictionary)
+        builder = self.factory.get_transcription_strategy('dictionary')
+        outputb = builder.build(ctx)
         self.assertEqual(expected, outputb)
 
     def test_directory(self):
         # expected = "Nagranie sesji gry Warhammer Fantasy 2e zawierające fantastyczne nazwy i zapożyczenia z języka niemieckiego. Bóstwa:Sigmar,Ursun,Morr,Shallya,Taal,Rhya,Ulric,Verena,Ranald,Manann,Myrmidia,Grimnir,Grungni,Valaya,Nakai,Morag-heg,Khaine,Asuryan,Kurnous,Isha,Chotec,Tepok,Tzunki,Itzl,Quetzl,Gork,Mork,Khorne,Nurgle,Slaanesh,Tzeentch,Hashut,Kweethul. Miejsca:Kislev,Ostermark,Rhebulas,Sitlakes,Menshenfresserhoffen,Biersalhof,Leszken,Bissendorf,Kiel,Seuthes,Trautenau,Tauer,Zeisholz,Brunfahre,Brunwasser,Rundespitze,Weiler,Nagenhof,Osterwald,Eisental,Mielau,Nachtdorf,Blutfurt,Fichtetal,Burgenhof,Rheden,Fortenhaf,Gerdouen,Bechafen,Dorna. Narodowości:Strzyganka,Strzyganin. Postaci:Aurelio Viermetz,Balthasar Eisenhart,Berthold Krüger,Hans Bauermann,Otto Lustig,Siegfried Stroheim,Lorenz Geißelbruder,Matthias Krähenfels. Software:Foundry VTT,Craig,Giarc."
         expected = "Test prefix, ends with a period. A:Something,Nothing. Ba:Some space?,Zażółć Gęślą Jaźń,Porrito. Just something."
 
-        directory = r'prompt\testA'
+        ctx = PromptBuildContext(
+            prompt_data = r'prompt\testA',
+            inner_prompt = None
+        )
 
-        builder = self.factory.get_strategy('dir')
-        outputa = builder.build(directory)
+        builder = self.factory.get_transcription_strategy('dir')
+        outputa = builder.build(ctx)
         self.assertEqual(expected, outputa)
 
-        builder = self.factory.get_strategy('directory')
-        outputb = builder.build(directory)
+        builder = self.factory.get_transcription_strategy('directory')
+        outputb = builder.build(ctx)
         self.assertEqual(expected, outputb)
+
+    def test_summarization(self):
+        expected = """You are an expert meeting summarizer and note-taker. Your task is to create a comprehensive, well-structured summary of the provided transcript. Focus on:
+
+1. Key decisions made
+2. Action items with owners and deadlines
+3. Important topics discussed
+4. Critical context and background information
+5. Next steps and follow-ups
+
+Organize your summary with clear headings, bullet points, and sections. Be concise but thorough. Preserve important technical details, names, and specific information mentioned.
+
+Transcription prompt:
+Blablab
+
+
+Ensure the summary is well-structured, easy to read, and captures all essential information from the transcript. Highlight any unresolved issues or items that need attention."""
+        strat = self.factory.get_transcription_strategy('sdir')
+        ctx = PromptBuildContext(
+            prompt_data="prompt\\summarization",
+            inner_prompt="Blablab",
+        )
+
+        output = strat.build(ctx)
+        self.assertEqual(expected, output)
     
     def tearDown(self):
         del self.factory

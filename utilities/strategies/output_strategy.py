@@ -4,11 +4,24 @@ from abc import ABC, abstractmethod
 import os
 import json
 import datetime, time
+import typing
+from typing import Optional
+
+
+if typing.TYPE_CHECKING:
+    from utilities.pipeline_context import PipelineContext
 
 
 class OutputFormatStrategy(ABC):
     @abstractmethod
-    def output(self, segments: list[dict], output_dir: str, timestamp: int, output_base_name: str = None) -> None:
+    def output(
+        self,
+        segments: list[dict],
+        output_dir: str,
+        timestamp: int,
+        output_base_name: Optional[str] = None,
+        pipeline_context: Optional[PipelineContext] = None,
+    ) -> None:
         ...
 
     @staticmethod
@@ -23,7 +36,14 @@ class OutputFormatStrategy(ABC):
     
 
 class OutputJson(OutputFormatStrategy):
-    def output(self, segments: list[dict], output_dir: str, timestamp: int, output_base_name: str = None) -> None:
+    def output(
+        self,
+        segments: list[dict],
+        output_dir: str,
+        timestamp: int,
+        output_base_name: Optional[str] = None,
+        pipeline_context: Optional[PipelineContext] = None,
+    ) -> None:
         json_path = os.path.join(output_dir, f"{timestamp}_{output_base_name}-3.json")
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(
@@ -35,34 +55,63 @@ class OutputJson(OutputFormatStrategy):
                     for seg in segments]
                 },
                 f, indent=2, ensure_ascii=False)
+        if pipeline_context:
+            pipeline_context.register_transcript_filepath(json_path, 'json')
     
 
 class OutputText(OutputFormatStrategy):
-    def output(self, segments: list[dict], output_dir: str, timestamp: int, output_base_name: str = None) -> None:
+    def output(
+        self,
+        segments: list[dict],
+        output_dir: str,
+        timestamp: int,
+        output_base_name: Optional[str] = None,
+        pipeline_context: Optional[PipelineContext] = None,
+    ) -> None:
         text_path = os.path.join(output_dir, f"{timestamp}_{output_base_name}-1.txt")
         with open(text_path, 'w', encoding='utf-8') as f:
             for seg in segments:
                 start_str = self._format_time(seg["start"])
                 end_str = self._format_time(seg.get("end",None))
                 f.write(f"[{start_str} / {end_str}] ({seg.get('speaker', 'N/A')}):\n{seg['text'].strip()}\n\n")
+        if pipeline_context:
+            pipeline_context.register_transcript_filepath(text_path, 'text')
     
 
 class OutputDense(OutputFormatStrategy):
-    def output(self, segments: list[dict], output_dir: str, timestamp: int, output_base_name: str = None) -> None:
+    def output(
+        self,
+        segments: list[dict],
+        output_dir: str,
+        timestamp: int,
+        output_base_name: Optional[str] = None,
+        pipeline_context: Optional[PipelineContext] = None,
+    ) -> None:
         text_dense_path = os.path.join(output_dir, f"{timestamp}_{output_base_name}-0.dense.txt")
         with open(text_dense_path, 'w', encoding='utf-8') as f:
             for seg in segments:
                 start_str = self._format_time(seg["start"])
                 end_str = self._format_time(seg.get("end",None))
                 f.write(f"[{start_str} / {end_str}] ({seg.get('speaker', 'N/A')}): {seg['text'].strip()}\n")
+        if pipeline_context:
+            pipeline_context.register_transcript_filepath(text_dense_path, 'dense')
     
 
 class OutputRaw(OutputFormatStrategy):
-    def output(self, segments: list[dict], output_dir: str, timestamp: int, output_base_name: str = None) -> None:
+    def output(
+        self,
+        segments: list[dict],
+        output_dir: str,
+        timestamp: int,
+        output_base_name: Optional[str] = None,
+        pipeline_context: Optional[PipelineContext] = None,
+    ) -> None:
         text_raw_path = os.path.join(output_dir, f"{timestamp}_{output_base_name}-2.raw.txt")
         with open(text_raw_path, 'w', encoding='utf-8') as f:
             for seg in segments:
                 f.write(f"{seg['text'].strip()}\n")
+        if pipeline_context:
+            pipeline_context.register_transcript_filepath(text_raw_path, 'raw')
     
 
 class OutputFormatStrategyFactory():
