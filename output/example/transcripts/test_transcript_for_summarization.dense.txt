@@ -1,0 +1,33 @@
+[00:00:00.000 / 00:00:05.000] (Speaker 1 (player_1_audio)): Welcome everyone to our Dungeons & Dragons session tonight.
+[00:00:05.000 / 00:00:10.000] (Speaker 2 (dm_audio)): Thank you for joining. Today we'll be continuing our adventure in the Forgotten Realms.
+[00:00:10.000 / 00:00:15.000] (Speaker 3 (player_2_audio)): I'm excited to see what happens next with our characters.
+[00:00:15.000 / 00:00:20.000] (Speaker 1 (player_1_audio)): My character Theron Blackwood is ready to investigate the mysterious ruins.
+[00:00:20.000 / 00:00:25.000] (Speaker 2 (dm_audio)): As you approach the ruins, you notice strange symbols etched into the stone.
+[00:00:25.000 / 00:00:30.000] (Speaker 4 (player_3_audio)): I cast detect magic to see if there's any magical aura around the symbols.
+[00:00:30.000 / 00:00:35.000] (Speaker 2 (dm_audio)): The symbols glow faintly with abjuration magic, suggesting they're protective wards.
+[00:00:35.000 / 00:00:40.000] (Speaker 3 (player_2_audio)): I'll try to decipher the symbols using my arcana skill.
+[00:00:40.000 / 00:00:45.000] (Speaker 2 (dm_audio)): With a successful arcana check, you determine the wards are designed to alert the inhabitants if trespassers enter.
+[00:00:45.000 / 00:00:50.000] (Speaker 1 (player_1_audio)): We should proceed carefully then. I'll take the lead and check for traps.
+[00:00:50.000 / 00:00:55.000] (Speaker 2 (dm_audio)): As you enter the ruins, you hear the sound of water dripping in the distance.
+[00:00:55.000 / 00:01:00.000] (Speaker 4 (player_3_audio)): I'll light a torch to better see our surroundings.
+[00:01:00.000 / 00:01:05.000] (Speaker 2 (dm_audio)): The torchlight reveals a corridor leading deeper into the ruins, with ancient carvings on the walls.
+[00:01:05.000 / 00:01:10.000] (Speaker 3 (player_2_audio)): The carvings depict scenes of battles between dragons and ancient warriors.
+[00:01:10.000 / 00:01:15.000] (Speaker 1 (player_1_audio)): This could be a dragon cult site. We need to be extra cautious.
+[00:01:15.000 / 00:01:20.000] (Speaker 2 (dm_audio)): Suddenly, you hear a low growl coming from ahead in the corridor.
+[00:01:20.000 / 00:01:25.000] (Speaker 4 (player_3_audio)): I ready my shield and prepare a defensive spell.
+[00:01:25.000 / 00:01:30.000] (Speaker 2 (dm_audio)): A small drake emerges from the shadows, its scales gleaming in the torchlight.
+[00:01:30.000 / 00:01:35.000] (Speaker 1 (player_1_audio)): I attack the drake with my sword!
+[00:01:35.000 / 00:01:40.000] (Speaker 2 (dm_audio)): Your sword strikes true, wounding the creature.
+[00:01:40.000 / 00:01:45.000] (Speaker 3 (player_2_audio)): I cast magic missile at the drake!
+[00:01:45.000 / 00:01:50.000] (Speaker 2 (dm_audio)): The magic missiles hit the drake, causing it to roar in pain.
+[00:01:50.000 / 00:01:55.000] (Speaker 4 (player_3_audio)): I use my healing word on Theron to keep him in the fight.
+[00:01:55.000 / 00:02:00.000] (Speaker 2 (dm_audio)): The drake lashes out with its claws, but misses its attack.
+[00:02:00.000 / 00:02:05.000] (Speaker 1 (player_1_audio)): With a final blow, I defeat the drake!
+[00:02:05.000 / 00:02:10.000] (Speaker 2 (dm_audio)): The drake collapses to the ground, defeated.
+[00:02:10.000 / 00:02:15.000] (Speaker 3 (player_2_audio)): Great job everyone! Let's see what treasure it was guarding.
+[00:02:15.000 / 00:02:20.000] (Speaker 2 (dm_audio)): Searching the drake's hoard, you find a small chest containing 50 gold pieces and a potion of healing.
+[00:02:20.000 / 00:02:25.000] (Speaker 4 (player_3_audio)): I'll take the potion of healing for emergencies.
+[00:02:25.000 / 00:02:30.000] (Speaker 1 (player_1_audio)): And I'll take the gold to split among the party.
+[00:02:30.000 / 00:02:35.000] (Speaker 2 (dm_audio)): As you continue deeper into the ruins, the air grows colder and you see your breath in the torchlight.
+[00:02:35.000 / 00:02:40.000] (Speaker 3 (player_2_audio)): I have a bad feeling about this place...
+[00:02:40.000 / 00:02:45.000] (Speaker 2 (dm_audio)): That's where we'll stop for tonight's session. Make sure to rest up for our next adventure!

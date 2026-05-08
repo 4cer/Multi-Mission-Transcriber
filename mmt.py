@@ -104,6 +104,7 @@ if __name__ == "__main__":
 
         summarizer = (LLMSummarizerBuilder(verbosity=args.verbose)
             .with_confirmation(not args.no_confirm)
+            .with_no_confirm_endpoint(args.no_confirm)
             .with_pipeline_context(tracker)
             .with_summary_output(args.summary_output)
             .build())

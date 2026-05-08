@@ -180,6 +180,7 @@ cython_debug/
 /prompt/*
 !/prompt/example_*
 /output/*
+!/output/example*
 temp_converted.wav
 
 tests.py

@@ -7,6 +7,7 @@ import typing
 
 
 from utilities.pipeline_context import PipelineContext
+from utilities.api_url_utils import normalize_endpoint, validate_endpoint, get_provider_info
 
 
 class LLMSummarizer:
@@ -20,6 +21,7 @@ class LLMSummarizer:
         tokenizer_model: Optional[str] = None,
         verbose: int = 0,
         confirm_before_send: bool = True,
+        no_confirm_endpoint: bool = False,
         summary_output: Optional[str] = None,
         summarization_prompt: Optional[str] = None,
     ):
@@ -33,12 +35,20 @@ class LLMSummarizer:
             tokenizer_model: Model to use for token counting (defaults to model_arch)
             verbose: Verbosity level (0-5, where 0=quiet, 5=most verbose)
             confirm_before_send: Whether to ask for confirmation before sending
+            no_confirm_endpoint: If True, substitute malformed endpoints instead of raising exception
             summary_output: Output path for summary markdown
             summarization_prompt: Fully assembled summarization prompt
         """
         load_dotenv()
 
-        self.api_endpoint = api_endpoint or os.getenv("LLM_API_ENDPOINT")
+        self.no_confirm_endpoint = no_confirm_endpoint
+
+        raw_endpoint = api_endpoint or os.getenv("LLM_API_ENDPOINT")
+        if raw_endpoint:
+            validate_endpoint(raw_endpoint, verbose)
+            self.api_endpoint = normalize_endpoint(raw_endpoint, verbose, no_confirm=no_confirm_endpoint)
+        else:
+            self.api_endpoint = None
         self.api_key = api_key or os.getenv("LLM_API_KEY")
         self.model_arch = model_arch or os.getenv("LLM_MODEL_ARCH", "nvidia/nemotron-3-super-120b-a12b:free")
         self.tokenizer_model = tokenizer_model or os.getenv("LLM_TOKENIZER_MODEL", "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16")
@@ -119,16 +129,41 @@ class LLMSummarizer:
 
         try:
             response = httpx.post(
-                self.api_endpoint,  # type: str
+                self.api_endpoint,
                 headers=headers,
                 json=payload,
                 timeout=120.0,
             )
             response.raise_for_status()
-            data = response.json()
+
+            # Try to parse JSON response
+            try:
+                data = response.json()
+            except json.JSONDecodeError as json_err:
+                error_msg = f"Invalid JSON response: {str(json_err)}"
+                if self.verbose > 0:
+                    print(f"[API ERROR] {error_msg}")
+                    print(f"[API ERROR] Response status: {response.status_code}")
+                    print(f"[API ERROR] Response headers: {dict(response.headers)}")
+                    print(f"[API ERROR] Response text (first 1000 chars): {response.text[:1000]}")
+                return {"success": False, "error": error_msg}
 
             if self.verbose > 0:
                 print(f"[API RESPONSE] Status: {response.status_code}")
+
+            # Check for API error in response
+            if "error" in data:
+                error_msg = f"API returned an error: {data['error']}"
+                if self.verbose > 0:
+                    print(f"[API ERROR] {error_msg}")
+                return {"success": False, "error": error_msg}
+
+            # Validate response structure
+            if "choices" not in data or not data["choices"]:
+                error_msg = f"Unexpected API response format: {json.dumps(data)[:500]}"
+                if self.verbose > 0:
+                    print(f"[API ERROR] {error_msg}")
+                return {"success": False, "error": error_msg}
 
             return {
                 "success": True,
@@ -220,8 +255,17 @@ class LLMSummarizer:
                 print(f"\n{result['summary']}")
 
             # Determine output path
-            output = self.summary_output
-            if not output:
+            if self.summary_output:
+                # Check if summary_output is a directory (either exists as dir or has no file extension)
+                if os.path.isdir(self.summary_output) or not os.path.splitext(self.summary_output)[1]:
+                    # Treat as directory, generate filename from transcript base name
+                    transcript_base = os.path.splitext(os.path.basename(transcript_path))[0]
+                    # Remove any existing .dense, .raw, etc. suffixes for cleaner output name
+                    clean_base = transcript_base.split('.')[0] if '.' in transcript_base else transcript_base
+                    output = os.path.join(self.summary_output, f"{clean_base}_summary.md")
+                else:
+                    output = self.summary_output
+            else:
                 base = os.path.splitext(os.path.basename(transcript_path))[0]
                 output = os.path.join(os.path.dirname(transcript_path), f"{base}_summary.md")
 
@@ -286,7 +330,7 @@ class LLMSummarizerBuilder:
         self._tokenizer_model: Optional[str] = None
         self._verbose: int = verbosity
         self._confirm_before_send: bool = True
-        self._summary_output: Optional[str] = None
+        self._no_confirm_endpoint: bool = False  # If True, substitute malformed endpoints        self._summary_output: Optional[str] = None
         self._pipeline_context: Optional[PipelineContext] = None
         self._summarization_prompt: Optional[str] = None
 
@@ -318,6 +362,11 @@ class LLMSummarizerBuilder:
 
     def with_confirmation(self, confirm: bool) -> "LLMSummarizerBuilder":
         self._confirm_before_send = confirm
+        return self
+
+    def with_no_confirm_endpoint(self, no_confirm: bool) -> "LLMSummarizerBuilder":
+        """If True, substitute malformed endpoints instead of raising exception."""
+        self._no_confirm_endpoint = no_confirm
         return self
 
     def with_summary_output(self, output: str) -> "LLMSummarizerBuilder":
@@ -365,6 +414,7 @@ class LLMSummarizerBuilder:
             tokenizer_model=self._tokenizer_model,
             verbose=self._verbose,
             confirm_before_send=self._confirm_before_send,
+            no_confirm_endpoint=self._no_confirm_endpoint,
             summary_output=self._summary_output,
             summarization_prompt=self._summarization_prompt,
         )
