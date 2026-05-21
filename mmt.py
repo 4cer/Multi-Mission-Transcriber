@@ -72,7 +72,7 @@ if __name__ == "__main__":
         if not args.summary_output:
             parser.error('--summary-output is required for summarization')
 
-    tracker = (PipelineContextBuilder()
+    tracker = (PipelineContextBuilder(verbosity=args.verbose)
         .with_transcription_prompt(args.prompt_type, args.prompt)
         .with_summarization_prompt(args.summarization_prompt_type, args.summarization_prompt)
         .with_transcript_path(args.summarization_transcript)
@@ -115,3 +115,5 @@ if __name__ == "__main__":
             summarizer.summarize(transcript_path)
         else:
             print("[WARNING] No transcript found for summarization.")
+    
+    tracker.report()

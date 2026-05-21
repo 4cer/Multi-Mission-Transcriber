@@ -10,6 +10,8 @@ from typing import Optional
 
 if typing.TYPE_CHECKING:
     from utilities.pipeline_context import PipelineContext
+from utilities.enums import ArtifactType
+from utilities.pipeline_context import ArtifactEntry
 
 
 class OutputFormatStrategy(ABC):
@@ -56,7 +58,14 @@ class OutputJson(OutputFormatStrategy):
                 },
                 f, indent=2, ensure_ascii=False)
         if pipeline_context:
-            pipeline_context.register_transcript_filepath(json_path, 'json')
+            artifact = ArtifactEntry(
+                file_path=json_path,
+                category=ArtifactType.TRANSCRIPT,
+                meta_inf={
+                    'transcript_type': 'json'
+                }
+            )
+            pipeline_context.register_artifact(artifact)
     
 
 class OutputText(OutputFormatStrategy):
@@ -75,7 +84,14 @@ class OutputText(OutputFormatStrategy):
                 end_str = self._format_time(seg.get("end",None))
                 f.write(f"[{start_str} / {end_str}] ({seg.get('speaker', 'N/A')}):\n{seg['text'].strip()}\n\n")
         if pipeline_context:
-            pipeline_context.register_transcript_filepath(text_path, 'text')
+            artifact = ArtifactEntry(
+                file_path=text_path,
+                category=ArtifactType.TRANSCRIPT,
+                meta_inf={
+                    'transcript_type': 'text'
+                }
+            )
+            pipeline_context.register_artifact(artifact)
     
 
 class OutputDense(OutputFormatStrategy):
@@ -94,7 +110,14 @@ class OutputDense(OutputFormatStrategy):
                 end_str = self._format_time(seg.get("end",None))
                 f.write(f"[{start_str} / {end_str}] ({seg.get('speaker', 'N/A')}): {seg['text'].strip()}\n")
         if pipeline_context:
-            pipeline_context.register_transcript_filepath(text_dense_path, 'dense')
+            artifact = ArtifactEntry(
+                file_path=text_dense_path,
+                category=ArtifactType.TRANSCRIPT,
+                meta_inf={
+                    'transcript_type': 'dense'
+                }
+            )
+            pipeline_context.register_artifact(artifact)
     
 
 class OutputRaw(OutputFormatStrategy):
@@ -111,7 +134,14 @@ class OutputRaw(OutputFormatStrategy):
             for seg in segments:
                 f.write(f"{seg['text'].strip()}\n")
         if pipeline_context:
-            pipeline_context.register_transcript_filepath(text_raw_path, 'raw')
+            artifact = ArtifactEntry(
+                file_path=text_raw_path,
+                category=ArtifactType.TRANSCRIPT,
+                meta_inf={
+                    'transcript_type': 'raw'
+                }
+            )
+            pipeline_context.register_artifact(artifact)
     
 
 class OutputFormatStrategyFactory():

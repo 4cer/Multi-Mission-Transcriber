@@ -13,9 +13,8 @@ import shutil
 import os
 import time
 from silero_vad import load_silero_vad, read_audio, get_speech_timestamps
-import math
-import typing
 from typing import Optional
+from tqdm import tqdm
 
 import librosa
 import sounddevice as sd
@@ -51,7 +50,8 @@ class TranscriptionStrategy(ABC):
             output_dir: str,
             output_types: list[str],
             segments: list[dict],
-            output_base_name: Optional[str] = None
+            output_base_name: Optional[str] = None,
+            pipeline_context: Optional[PipelineContext] = None,
     ) -> None:
         """Write labeled segments with text, speaker, timestamps to selected file format(s)"""
         now = int(time.time())
@@ -59,7 +59,7 @@ class TranscriptionStrategy(ABC):
 
         for tp in output_types:
             strategy = OutputFormatStrategyFactory.get_strategy(tp)
-            strategy.output(segments, output_dir, now, base_name)
+            strategy.output(segments, output_dir, now, base_name, pipeline_context)
 
     def _handle_large_files(self, input_file, clip_dir) -> list[str]:
         """Determine if file size exceeds 1 GB, split if yes."""
@@ -89,10 +89,38 @@ class TranscriptionStrategy(ABC):
             except Exception as e:
                 print(e)
 
+    def tqdm_progress(self, percent):
+        # Lazily create progress bar on first invocation, inferring total segments
+        if not hasattr(self, 'progress_bar') or self.progress_bar is None:
+            # Infer total segments from first percentage: percent = 100 / total_segments
+            total_segments = max(1, round(100 / percent)) if percent > 0 else 100
+            self.progress_bar = tqdm(total=total_segments, desc="Transcribing", unit="seg")
+        self.progress_bar.update(1)
+        self.progress_bar.refresh()
+
+    def close_tqdm(self):
+        if hasattr(self, 'progress_bar') and self.progress_bar is not None:
+            self.progress_bar.close()
+            self.progress_bar = None
+
 
 class NonDiarizedSingleStreamStrategy(TranscriptionStrategy):
     """Transcribes single or multi-stream audio as a single speaker."""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count, output_base_name, model_name) -> None:
+    def process(
+        self,
+        input_files: list[str],
+        output_dir: str,
+        clip_dir: str,
+        initial_prompt: Optional[str],
+        output_types: list[str],
+        language: Optional[str],
+        speakers_min: Optional[int],
+        speakers_max: Optional[int],
+        speaker_count: Optional[int],
+        output_base_name: Optional[str],
+        model_name: str,
+        pipeline_context: Optional[PipelineContext],
+    ) -> None:
         whisper_model = whisperx.load_model(
             whisper_arch=model_name,
             device="cuda",
@@ -100,15 +128,33 @@ class NonDiarizedSingleStreamStrategy(TranscriptionStrategy):
             language=language
         )
         whisper_model.options.initial_prompt = initial_prompt
-        for input_file in input_files:
-            result = whisper_model.transcribe(input_file, print_progress=True)
+        for input_file in tqdm(input_files, desc="Job", unit="files"):
+            result = whisper_model.transcribe(
+                input_file,
+                progress_callback=self.tqdm_progress
+            )
             segments = result["segments"]
-            self._generate_outputs([input_file], output_dir, output_types, segments, output_base_name)
+            self._generate_outputs([input_file], output_dir, output_types, segments, output_base_name, pipeline_context)
+            self.close_tqdm()
 
 
 class DiarizedSingleStreamStrategy(TranscriptionStrategy):
     """Transcribes single-stream audio with speaker diarization."""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count, output_base_name, model_name) -> None:
+    def process(
+        self,
+        input_files: list[str],
+        output_dir: str,
+        clip_dir: str,
+        initial_prompt: Optional[str],
+        output_types: list[str],
+        language: Optional[str],
+        speakers_min: Optional[int],
+        speakers_max: Optional[int],
+        speaker_count: Optional[int],
+        output_base_name: Optional[str],
+        model_name: str,
+        pipeline_context: Optional[PipelineContext],
+    ) -> None:
         whisper_model = whisperx.load_model(
             whisper_arch=model_name,
             device="cuda",
@@ -121,7 +167,10 @@ class DiarizedSingleStreamStrategy(TranscriptionStrategy):
             clips = self._handle_large_files(input_file, clip_dir)
             all_segments = []
             for clip_path in clips:
-                result = whisper_model.transcribe(clip_path, tqdm_progress=True)
+                result = whisper_model.transcribe(
+                    input_file,
+                    progress_callback=self.tqdm_progress
+                )
                 segments = result["segments"]
                 for segment in segments:
                     sample_rate = torchaudio.info(clip_path).sample_rate
@@ -129,6 +178,7 @@ class DiarizedSingleStreamStrategy(TranscriptionStrategy):
                     embedding_tensor = embedding_model({"waveform": waveform, "sample_rate": sample_rate})
                     embedding = embedding_tensor.data.mean(axis=0)
                     all_segments.append({"start": segment["start"], "end": segment["end"], "text": segment["text"], "embedding": embedding})
+                self.close_tqdm()
             if all_segments:
                 embeddings = np.array([seg["embedding"].data for seg in all_segments])
                 dist_matrix = pdist(embeddings, metric='cosine')
@@ -141,12 +191,26 @@ class DiarizedSingleStreamStrategy(TranscriptionStrategy):
                     del segment["embedding"]
                 sorted_segments = sorted(all_segments, key=lambda x: x["start"])
 
-                self._generate_outputs([input_file], output_dir, output_types, sorted_segments, output_base_name)
+                self._generate_outputs([input_file], output_dir, output_types, sorted_segments, output_base_name, pipeline_context)
 
 
 class NonDiarizedMultiStreamStrategy(TranscriptionStrategy):
     """Transcribes multi-stream audio, each stream as a different speaker."""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count, output_base_name, model_name) -> None:
+    def process(
+        self,
+        input_files: list[str],
+        output_dir: str,
+        clip_dir: str,
+        initial_prompt: Optional[str],
+        output_types: list[str],
+        language: Optional[str],
+        speakers_min: Optional[int],
+        speakers_max: Optional[int],
+        speaker_count: Optional[int],
+        output_base_name: Optional[str],
+        model_name: str,
+        pipeline_context: Optional[PipelineContext],
+    ) -> None:
         whisper_model = whisperx.load_model(
             whisper_arch=model_name,
             device="cuda",
@@ -156,15 +220,33 @@ class NonDiarizedMultiStreamStrategy(TranscriptionStrategy):
         whisper_model.options.initial_prompt = initial_prompt
         for idx, input_file in enumerate(input_files):
             speaker = f"Speaker {idx + 1}"
-            result = whisper_model.transcribe(input_file, tqdm_progress=True)
+            result = whisper_model.transcribe(
+                input_file,
+                progress_callback=self.tqdm_progress
+            )
             segments = result["segments"]
             # self._generate_outputs(input_file, output_dir, output_types, segments, speaker)
-            self._generate_outputs(input_file, output_dir, output_types, segments, output_base_name)
+            self._generate_outputs([input_file], output_dir, output_types, segments, output_base_name, pipeline_context)
+            self.close_tqdm()
 
 
 class NonDiarizedAlignedFilesStrategy(TranscriptionStrategy):
     """Transcribes multiple aligned files, each as a separate speaker, into a combined output."""
-    def process(self, input_files, output_dir, clip_dir, initial_prompt, output_types, language, speakers_min, speakers_max, speaker_count, output_base_name, model_name) -> None:
+    def process(
+        self,
+        input_files: list[str],
+        output_dir: str,
+        clip_dir: str,
+        initial_prompt: Optional[str],
+        output_types: list[str],
+        language: Optional[str],
+        speakers_min: Optional[int],
+        speakers_max: Optional[int],
+        speaker_count: Optional[int],
+        output_base_name: Optional[str],
+        model_name: str,
+        pipeline_context: Optional[PipelineContext],
+    ) -> None:
         whisper_model = whisperx.load_model(
             whisper_arch=model_name,
             device="cuda",
@@ -176,12 +258,16 @@ class NonDiarizedAlignedFilesStrategy(TranscriptionStrategy):
         for idx, input_file in enumerate(input_files):
             speaker_candidate_name = os.path.basename(input_file).split('.')[0]
             speaker = f"Speaker {idx + 1} ({speaker_candidate_name})"
-            result = whisper_model.transcribe(input_file, tqdm_progress=True)
+            result = whisper_model.transcribe(
+                input_file,
+                progress_callback=self.tqdm_progress
+            )
             segments = result["segments"]
             for seg in segments:
                 all_segments.append({"start": seg["start"], "end": seg["end"], "text": seg["text"], "speaker": speaker})
+            self.close_tqdm()
         sorted_segments = sorted(all_segments, key=lambda x: x["start"])
-        self._generate_outputs(input_files, output_dir, output_types, sorted_segments, output_base_name)
+        self._generate_outputs(input_files, output_dir, output_types, sorted_segments, output_base_name, pipeline_context)
 
 
 class TranscriptionStrategyFactory():
